@@ -133,8 +133,35 @@ const player = {
 };
 
 const obstacles = [];
+const clouds = []; // New cloud array
 let framesSinceLastSpawn = 0;
 const minSpawnGap = 70;
+
+class Cloud {
+    constructor() {
+        this.x = canvas.width + 100;
+        this.y = Math.random() * 200 - 100; // Random height in sky
+        this.speed = Math.random() * 0.5 + 0.2; // Move slower than obstacles for parallax
+        this.width = Math.random() * 60 + 40;
+        this.height = this.width * 0.6;
+        this.markedForDeletion = false;
+    }
+
+    update() {
+        this.x -= this.speed;
+        if (this.x + this.width < -100) this.markedForDeletion = true;
+    }
+
+    draw() {
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+        ctx.beginPath();
+        // Simple fluffy cloud shape composed of circles
+        ctx.arc(this.x, this.y, this.width / 2, 0, Math.PI * 2);
+        ctx.arc(this.x + this.width / 2, this.y - this.height / 4, this.width / 3, 0, Math.PI * 2);
+        ctx.arc(this.x + this.width, this.y, this.width / 2, 0, Math.PI * 2);
+        ctx.fill();
+    }
+}
 
 class Obstacle {
     constructor() {
@@ -183,7 +210,21 @@ class Obstacle {
 }
 
 function updateGameLogic() {
-    // Spawning
+    // Cloud Spawning
+    if (Math.random() < 0.01) {
+        clouds.push(new Cloud());
+    }
+
+    // Clouds Update
+    for (let i = 0; i < clouds.length; i++) {
+        clouds[i].update();
+        if (clouds[i].markedForDeletion) {
+            clouds.splice(i, 1);
+            i--;
+        }
+    }
+
+    // Obstacle Spawning
     framesSinceLastSpawn++;
     if (framesSinceLastSpawn > minSpawnGap) {
         if (Math.random() < 0.03 + (score * 0.001)) {
@@ -225,6 +266,20 @@ function updateGameLogic() {
 
 function drawScene() {
     drawWorld();
+
+    // Draw Sun
+    ctx.fillStyle = '#FFD700'; // Gold
+    ctx.shadowColor = '#FFA500'; // Orange glow
+    ctx.shadowBlur = 20;
+    ctx.beginPath();
+    ctx.arc(100, -150, 40, 0, Math.PI * 2); // Positioned high up
+    ctx.fill();
+    ctx.shadowBlur = 0; // Reset shadow
+
+    // Draw Clouds
+    for (const cloud of clouds) {
+        cloud.draw();
+    }
 
     // Draw obstacles
     for (const obs of obstacles) {
