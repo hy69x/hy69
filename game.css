@@ -8,6 +8,12 @@ body {
     /* Prevent scrolling on game page */
     background: #222;
     /* Fallback */
+    flex-direction: column;
+}
+
+header {
+    margin-bottom: 20px;
+    z-index: 20;
 }
 
 #game-container {
@@ -64,10 +70,44 @@ body {
     #gameCanvas {
         width: 100%;
         border-radius: 10px;
+        max-height: 60vh;
+        /* Make room for button */
     }
 
     .back-btn {
-        padding: 8px 15px;
-        font-size: 1rem;
+        padding: 5px 12px;
+        font-size: 0.9rem;
+        top: 10px;
+        left: 10px;
+    }
+}
+
+/* Mobile Jump Button */
+#mobile-jump-btn {
+    display: none;
+    background: var(--accent-yellow, #FFF59D);
+    border: 3px solid var(--border-color, #37474F);
+    color: var(--text-color, #263238);
+    font-size: 1.5rem;
+    font-weight: 700;
+    padding: 20px 0;
+    width: 80%;
+    /* Wide button */
+    max-width: 300px;
+    margin-top: 20px;
+    cursor: pointer;
+    touch-action: manipulation;
+    z-index: 100;
+    user-select: none;
+}
+
+#mobile-jump-btn:active {
+    background: var(--accent-pink, #F48FB1);
+    transform: translate(0, 3px);
+}
+
+@media (max-width: 768px) {
+    #mobile-jump-btn {
+        display: block;
     }
 }

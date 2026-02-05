@@ -414,3 +414,27 @@ window.game = {
         cancelAnimationFrame(animationFrameId);
     }
 };
+
+// Mobile Jump Button
+const jumpBtn = document.getElementById('mobile-jump-btn');
+if (jumpBtn) {
+    jumpBtn.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        e.stopPropagation(); // Prevent canvas touch
+        handleInput();
+    }, { passive: false });
+
+    jumpBtn.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        handleInput();
+    });
+
+    const releaseInput = (e) => {
+        e.preventDefault();
+        input.jump = false;
+    };
+
+    jumpBtn.addEventListener('touchend', releaseInput);
+    jumpBtn.addEventListener('mouseup', releaseInput);
+    jumpBtn.addEventListener('mouseleave', releaseInput);
+}
