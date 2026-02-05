@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Penguin Slide: Downhill</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="game.css">
+</head>
+
+<body>
+
+    <a href="index.html" class="back-btn">
+        &larr; Back
+    </a>
+
+    <div id="game-container">
+        <div id="game-instructions">Press SPACE / CLICK / TAP to Jump!</div>
+        <canvas id="gameCanvas" width="800" height="500"></canvas>
+    </div>
+
+    <script src="game.js"></script>
+    <script>
+        // Auto-start or wait for input
+        window.onload = function () {
+            if (window.game) {
+                // We'll let the user click/tap to start to ensure audio contexts etc. work if we add sound later,
+                // but for now immediate start or "Click to Start" is fine. 
+                // Let's just initialize it.
+                window.game.start();
+            }
+        };
+    </script>
+</body>
+
+</html>
