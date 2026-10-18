@@ -108,6 +108,17 @@ function buildInterests() {
   return `
     <h2>🎯 Interests</h2>
     <div class="interest-grid">${cards}</div>
+    <div class="spotify-section" style="margin-top:2rem;">
+      <h3>🎧 Journey Soundtrack</h3>
+      <p style="font-size:0.84rem; opacity:0.65; margin:0.4rem 0 0.9rem;">My curated playlist for late-night coding and scenic train rides.</p>
+      <iframe
+        style="border-radius:12px; border:none; width:100%; box-shadow:0 8px 24px rgba(0,0,0,0.4);"
+        src="${PORTFOLIO.spotifyPlaylistUrl}"
+        height="352"
+        allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+        loading="lazy">
+      </iframe>
+    </div>
   `;
 }
 

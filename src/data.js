@@ -62,6 +62,8 @@ or tinkering with creative tech.`,
     { emoji: '☕', label: 'Coffee' },
   ],
 
+  spotifyPlaylistUrl: 'https://open.spotify.com/embed/playlist/5yPb22gGKMg6YFwrItzFco?utm_source=generator&theme=0',
+
   contact: {
     email:    'hello@yoursite.dev',
     github:   'https://github.com/yourhandle',

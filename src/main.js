@@ -1848,8 +1848,38 @@ document.getElementById('cam-badge').addEventListener('click', toggleCam);
 document.getElementById('horn-btn')?.addEventListener('click', playHorn);
 document.getElementById('sound-btn')?.addEventListener('click', toggleSound);
 
+// ── SPOTIFY DOCK CONTROLLER ─────────────────────────────────
+const spotifyBtn       = document.getElementById('spotify-btn');
+const spotifyDock      = document.getElementById('spotify-dock');
+const spotifyDockClose = document.getElementById('spotify-dock-close');
+
+export function toggleSpotify() {
+  if (!spotifyDock) return;
+  const isHidden = spotifyDock.classList.contains('hidden');
+  if (isHidden) {
+    spotifyDock.classList.remove('hidden', 'closing');
+    spotifyBtn?.classList.add('active');
+  } else {
+    closeSpotify();
+  }
+}
+
+export function closeSpotify() {
+  if (!spotifyDock || spotifyDock.classList.contains('hidden')) return;
+  spotifyDock.classList.add('closing');
+  spotifyBtn?.classList.remove('active');
+  setTimeout(() => {
+    spotifyDock.classList.add('hidden');
+    spotifyDock.classList.remove('closing');
+  }, 280);
+}
+
+spotifyBtn?.addEventListener('click', toggleSpotify);
+spotifyDockClose?.addEventListener('click', closeSpotify);
+
 window.addEventListener('keydown', e => {
   if (e.key === 't' || e.key === 'T') toggleTime();
+  if (e.key === 'p' || e.key === 'P') toggleSpotify();
   if (e.key === 'v' || e.key === 'V') toggleCam();
   if (e.key === 'h' || e.key === 'H' || (e.code === 'Space' && !e.repeat && !document.getElementById('panel').classList.contains('visible'))) {
     if (e.code === 'Space') e.preventDefault();
@@ -1858,6 +1888,7 @@ window.addEventListener('keydown', e => {
   if (e.key === 'm' || e.key === 'M') toggleSound();
   if (e.key === 'Escape') {
     UI.hide(); highlightCoach(-1); coachBtns.forEach(b => b.classList.remove('active'));
+    closeSpotify();
   }
 });
 

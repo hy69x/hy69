@@ -4,8 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Portfolio — Train Journey</title>
-    <script type="module" crossorigin src="/assets/index-CvHh6ND7.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-D7w3E0_W.css">
+    <script type="module" crossorigin src="/assets/index-DOdfVgF7.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-Lh79Jl3t.css">
   </head>
   <body>
     <canvas id="canvas"></canvas>
@@ -50,8 +50,30 @@
       </div>
       <div id="biome-badge">🏔️ Alpine Pass</div>
       <div id="cam-badge" title="Click or press V to switch camera (5 views)">📷 Side View</div>
+      <button id="spotify-btn" class="hud-btn" title="Toggle Spotify Playlist (Press P)">🟢 Music</button>
       <button id="horn-btn" class="hud-btn" title="Blow train horn (Press H or Space)">🚂 Pull Horn</button>
       <button id="sound-btn" class="hud-btn" title="Toggle train audio">🔊 Sound: ON</button>
+    </div>
+
+    <!-- ─── Floating Spotify Dock ───────────────────────────── -->
+    <div id="spotify-dock" class="spotify-dock hidden">
+      <div class="spotify-dock-header">
+        <div class="spotify-dock-title">
+          <span class="spotify-icon">🟢</span>
+          <span>Spotify Playlist</span>
+        </div>
+        <button id="spotify-dock-close" class="spotify-action-btn" aria-label="Close Spotify player">✕</button>
+      </div>
+      <div class="spotify-dock-body">
+        <iframe
+          id="spotify-iframe"
+          style="border-radius:12px; border:none; width:100%; display:block;"
+          src="https://open.spotify.com/embed/playlist/5yPb22gGKMg6YFwrItzFco?utm_source=generator&theme=0"
+          height="352"
+          allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+          loading="lazy">
+        </iframe>
+      </div>
     </div>
 
     <!-- ─── Section panel overlay ──────────────────────────── -->
@@ -73,8 +95,9 @@
     <!-- ─── Hint bar ─────────────────────────────────────────── -->
     <div id="instructions">
       Click coach or nav to open &nbsp;|&nbsp;
-      <kbd>V</kbd> camera view &nbsp;|&nbsp;
+      <kbd>V</kbd> view &nbsp;|&nbsp;
       <kbd>T</kbd> time &nbsp;|&nbsp;
+      <kbd>P</kbd> music &nbsp;|&nbsp;
       <kbd>H</kbd> / <kbd>Space</kbd> horn &nbsp;|&nbsp;
       Scroll to zoom
     </div>
