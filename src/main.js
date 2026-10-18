@@ -1217,100 +1217,26 @@ function updateCamera(dt) {
   }
 }
 
-// ── AUDIO SYSTEM (Train Running Sounds & Whistle Horn) ─────────
-let audioCtx       = null;
-let masterGain     = null;
-let soundMuted     = false;
-let hornBuffer     = null;
-let ambientBuffer  = null;
-let ambientSource  = null;
-let ambientGain    = null;
-let bgMusicAllowed = false;
+// ── AUDIO SYSTEM (Pixabay Railway Train Ambient Loop & Horn) ────
+let soundMuted = false;
 
-// Preload audio files immediately over network
-const hornPromise = fetch('assets/sounds/horn.mp3')
-  .then(res => res.ok ? res.arrayBuffer() : null)
-  .catch(err => { console.warn('Failed to fetch horn.mp3:', err); return null; });
+const bgAudio   = document.getElementById('bg-audio')   || new Audio('assets/sounds/train-ambient.mp3');
+const hornAudio = document.getElementById('horn-audio') || new Audio('assets/sounds/horn.mp3');
 
-const ambientPromise = fetch('assets/sounds/train-ambient.mp3')
-  .then(res => res.ok ? res.arrayBuffer() : null)
-  .catch(err => { console.warn('Failed to fetch train-ambient.mp3:', err); return null; });
-
-function ensureAudioReady() {
-  if (!audioCtx) {
-    initAudio();
-  }
-  if (audioCtx && audioCtx.state === 'suspended') {
-    audioCtx.resume();
-  }
-}
-
-function initAudio() {
-  if (audioCtx) return;
-  try {
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  } catch (e) {
-    return;
-  }
-
-  masterGain = audioCtx.createGain();
-  masterGain.gain.value = soundMuted ? 0 : 0.85;
-  masterGain.connect(audioCtx.destination);
-
-  // Decode pre-fetched audio buffers
-  if (!hornBuffer) {
-    hornPromise.then(ab => {
-      if (ab && audioCtx) {
-        audioCtx.decodeAudioData(ab.slice(0))
-          .then(buf => { hornBuffer = buf; })
-          .catch(e => console.warn('Horn decode error:', e));
-      }
-    });
-  }
-
-  if (!ambientBuffer) {
-    ambientPromise.then(ab => {
-      if (ab && audioCtx) {
-        audioCtx.decodeAudioData(ab.slice(0))
-          .then(buf => {
-            ambientBuffer = buf;
-            if (!soundMuted && audioCtx.state === 'running' && !ambientSource && bgMusicAllowed) {
-              startAmbientLoop();
-            }
-          })
-          .catch(e => console.warn('Ambient decode error:', e));
-      }
-    });
-  }
-}
-
-function startAmbientLoop() {
-  if (!audioCtx || !ambientBuffer || ambientSource || soundMuted) return;
-  try {
-    ambientSource = audioCtx.createBufferSource();
-    ambientSource.buffer = ambientBuffer;
-    ambientSource.loop = true;
-    ambientGain = audioCtx.createGain();
-    ambientGain.gain.value = 0.65; // balanced authentic train running volume
-    ambientSource.connect(ambientGain);
-    ambientGain.connect(masterGain);
-    ambientSource.start(0);
-  } catch (err) {
-    console.warn('Ambient start error:', err);
-  }
-}
+bgAudio.loop   = true;
+bgAudio.volume = 0.75;
+hornAudio.volume = 1.0;
 
 export function startBackgroundMusic() {
-  bgMusicAllowed = true;
-  ensureAudioReady();
-  if (audioCtx && audioCtx.state === 'running' && ambientBuffer && !ambientSource && !soundMuted) {
-    startAmbientLoop();
+  if (soundMuted) return;
+  if (bgAudio.paused) {
+    bgAudio.play().catch(() => {
+      // Browser autoplay policy requires user gesture
+    });
   }
 }
 
 export function playHorn() {
-  ensureAudioReady();
-
   // 1. Visual steam burst from locomotive smokestack
   if (chimneyAnchor && smokeSystem) {
     chimneyAnchor.getWorldPosition(_chimneyWP);
@@ -1324,44 +1250,30 @@ export function playHorn() {
     setTimeout(() => btn.classList.remove('pulling'), 600);
   }
 
-  if (!audioCtx || soundMuted) return;
+  // Ensure background loop is running as well
+  startBackgroundMusic();
 
-  // 3. Play the authentic 7-second Pixabay horn
-  if (hornBuffer) {
-    const src = audioCtx.createBufferSource();
-    src.buffer = hornBuffer;
-    const hornGainNode = audioCtx.createGain();
-    hornGainNode.gain.value = 1.0;
-    src.connect(hornGainNode);
-    hornGainNode.connect(masterGain);
-    src.start(0);
-  } else {
-    hornPromise.then(ab => {
-      if (ab && audioCtx) {
-        audioCtx.decodeAudioData(ab.slice(0)).then(buf => {
-          hornBuffer = buf;
-          if (!soundMuted) {
-            const src = audioCtx.createBufferSource();
-            src.buffer = hornBuffer;
-            src.connect(masterGain);
-            src.start(0);
-          }
-        });
-      }
-    });
+  if (soundMuted) return;
+
+  // 3. Play the authentic 7-second train horn
+  try {
+    hornAudio.currentTime = 0;
+    hornAudio.play().catch(e => console.warn('Horn play error:', e));
+  } catch (e) {
+    console.warn('Horn play error:', e);
   }
 }
 
 export function toggleSound() {
-  ensureAudioReady();
   soundMuted = !soundMuted;
-  const btn = document.getElementById('sound-btn');
-  if (masterGain && audioCtx) {
-    masterGain.gain.setValueAtTime(soundMuted ? 0 : 0.85, audioCtx.currentTime);
-  }
+  bgAudio.muted   = soundMuted;
+  hornAudio.muted = soundMuted;
+
   if (!soundMuted) {
     startBackgroundMusic();
   }
+
+  const btn = document.getElementById('sound-btn');
   if (btn) {
     btn.textContent = soundMuted ? '🔇 Sound: OFF' : '🔊 Sound: ON';
     btn.classList.toggle('muted', soundMuted);
@@ -1507,14 +1419,13 @@ async function init() {
   trainReady = true;
   snapCamera();
 
-  const onInteraction = (e) => {
-    if (e?.target?.closest?.('#horn-btn')) return;
+  const onUserInteraction = () => {
     startBackgroundMusic();
   };
-  window.addEventListener('pointerdown', onInteraction);
-  window.addEventListener('keydown', onInteraction);
-  window.addEventListener('touchstart', onInteraction);
-  try { initAudio(); } catch (e) { /* starts on interaction */ }
+  window.addEventListener('pointerdown', onUserInteraction, { passive: true });
+  window.addEventListener('keydown', onUserInteraction, { passive: true });
+  window.addEventListener('touchstart', onUserInteraction, { passive: true });
+  startBackgroundMusic();
 
   await new Promise(r => setTimeout(r, 700));
   loadingEl.classList.add('fade-out');
