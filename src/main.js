@@ -1018,7 +1018,7 @@ class SnowSystem {
 
 const snowSystem = new SnowSystem(scene, 1200);
 
-// ── LOCOMOTIVE HEADLIGHT SYSTEM ──────────────────────────────
+// ── LOCOMOTIVE HEADLIGHT & LEFT/RIGHT ENGINE LIGHTING SYSTEM ──
 let headlightGroup     = null;
 let headSpot           = null;
 let frontFillLight     = null;
@@ -1026,6 +1026,28 @@ let beamCone           = null;
 let glowSprite         = null;
 let lensMat            = null;
 let headlightIntensity = 0.0;
+
+let leftMarker         = null;
+let rightMarker        = null;
+let leftFlank          = null;
+let rightFlank         = null;
+let sharedGlowTex      = null;
+
+function getSharedGlowTexture() {
+  if (sharedGlowTex) return sharedGlowTex;
+  const cvs = document.createElement('canvas');
+  cvs.width = cvs.height = 128;
+  const ctx = cvs.getContext('2d');
+  const grad = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
+  grad.addColorStop(0, 'rgba(255, 255, 230, 1.0)');
+  grad.addColorStop(0.25, 'rgba(255, 235, 160, 0.7)');
+  grad.addColorStop(0.6, 'rgba(255, 195, 80, 0.2)');
+  grad.addColorStop(1, 'rgba(255, 195, 80, 0)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 128, 128);
+  sharedGlowTex = new THREE.CanvasTexture(cvs);
+  return sharedGlowTex;
+}
 
 function createLocomotiveHeadlight() {
   const group = new THREE.Group();
@@ -1063,20 +1085,8 @@ function createLocomotiveHeadlight() {
   group.add(lens);
 
   // 4. Soft Lens Glow Flare Sprite
-  const cvs = document.createElement('canvas');
-  cvs.width = cvs.height = 128;
-  const ctx = cvs.getContext('2d');
-  const grad = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
-  grad.addColorStop(0, 'rgba(255, 255, 230, 1.0)');
-  grad.addColorStop(0.25, 'rgba(255, 235, 160, 0.7)');
-  grad.addColorStop(0.6, 'rgba(255, 195, 80, 0.2)');
-  grad.addColorStop(1, 'rgba(255, 195, 80, 0)');
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, 128, 128);
-  const glowTex = new THREE.CanvasTexture(cvs);
-
   const glowMat = new THREE.SpriteMaterial({
-    map: glowTex,
+    map: getSharedGlowTexture(),
     color: 0xfff0c0,
     transparent: true,
     opacity: 0,
@@ -1128,6 +1138,140 @@ function createLocomotiveHeadlight() {
   return group;
 }
 
+// ── LEFT & RIGHT FRONT MARKER LANTERNS (Ditch / Pilot Lamps) ──
+function createMarkerLantern(isLeft) {
+  const group = new THREE.Group();
+  const ironMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, metalness: 0.8, roughness: 0.4 });
+  const brassMat = new THREE.MeshStandardMaterial({ color: 0xdfb438, metalness: 0.9, roughness: 0.2 });
+
+  // 1. Vertical mount stem attached to buffer beam
+  const stemGeo = new THREE.CylinderGeometry(0.014, 0.016, 0.08, 8);
+  const stem = new THREE.Mesh(stemGeo, ironMat);
+  stem.position.set(0, -0.04, 0);
+  group.add(stem);
+
+  // 2. Compact lantern casing
+  const bodyGeo = new THREE.CylinderGeometry(0.065, 0.075, 0.12, 14);
+  bodyGeo.rotateX(Math.PI / 2);
+  const body = new THREE.Mesh(bodyGeo, ironMat);
+  group.add(body);
+
+  // 3. Polished brass bezel
+  const rimGeo = new THREE.TorusGeometry(0.065, 0.012, 8, 20);
+  const rim = new THREE.Mesh(rimGeo, brassMat);
+  rim.position.set(0, 0, 0.06);
+  group.add(rim);
+
+  // 4. Glowing glass lens
+  const lensGeo = new THREE.CircleGeometry(0.06, 20);
+  const lMat = new THREE.MeshBasicMaterial({ color: 0xfffae0, toneMapped: false });
+  const lens = new THREE.Mesh(lensGeo, lMat);
+  lens.position.set(0, 0, 0.063);
+  group.add(lens);
+
+  // 5. Soft lens glow flare sprite
+  const glowMat = new THREE.SpriteMaterial({
+    map: getSharedGlowTexture(),
+    color: 0xfff2cc,
+    transparent: true,
+    opacity: 0,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+  });
+  const glow = new THREE.Sprite(glowMat);
+  glow.scale.set(0.9, 0.9, 0.9);
+  glow.position.set(0, 0, 0.09);
+  group.add(glow);
+
+  // 6. Volumetric beam cone angled slightly outward along the tracks
+  const coneGeo = new THREE.ConeGeometry(1.1, 12.0, 16, 1, true);
+  coneGeo.rotateX(-Math.PI / 2);
+  coneGeo.translate(0, 0, 6.0);
+  const coneMat = new THREE.MeshBasicMaterial({
+    color: 0xfff3d8,
+    transparent: true,
+    opacity: 0,
+    blending: THREE.AdditiveBlending,
+    side: THREE.DoubleSide,
+    depthWrite: false,
+  });
+  const cone = new THREE.Mesh(coneGeo, coneMat);
+  cone.frustumCulled = false;
+  cone.rotation.y = isLeft ? -0.18 : 0.18; // spread outward
+  cone.rotation.x = 0.04;                  // slight downward pitch
+  group.add(cone);
+
+  // 7. Dynamic SpotLight angled along rails and embankment
+  const spot = new THREE.SpotLight(0xfffae0, 0, 50, Math.PI / 5.2, 0.5, 1.2);
+  spot.position.set(0, 0, 0.08);
+  spot.castShadow = false;
+
+  const target = new THREE.Object3D();
+  target.position.set(isLeft ? -3.0 : 3.0, -0.4, 18.0);
+  group.add(target);
+  spot.target = target;
+  group.add(spot);
+
+  return { group, spot, cone, glow, lensMat: lMat };
+}
+
+// ── LEFT & RIGHT FLANK INSPECTION LANTERNS (Ground / Running Gear) ──
+function createSideFlankLantern(isLeft) {
+  const group = new THREE.Group();
+  const sign = isLeft ? -1 : 1;
+  const ironMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, metalness: 0.8, roughness: 0.4 });
+  const brassMat = new THREE.MeshStandardMaterial({ color: 0xdfb438, metalness: 0.9, roughness: 0.2 });
+
+  // 1. Horizontal mounting bracket extending from running board
+  const armGeo = new THREE.CylinderGeometry(0.012, 0.012, 0.09, 8);
+  armGeo.rotateZ(Math.PI / 2);
+  const arm = new THREE.Mesh(armGeo, ironMat);
+  arm.position.set(sign * 0.045, 0, 0);
+  group.add(arm);
+
+  // 2. Vintage hooded lantern housing
+  const lampGeo = new THREE.CylinderGeometry(0.05, 0.06, 0.10, 12);
+  const lamp = new THREE.Mesh(lampGeo, ironMat);
+  lamp.position.set(sign * 0.09, 0, 0);
+  group.add(lamp);
+
+  // 3. Brass conical cap
+  const capGeo = new THREE.ConeGeometry(0.062, 0.04, 12);
+  const cap = new THREE.Mesh(capGeo, brassMat);
+  cap.position.set(sign * 0.09, 0.06, 0);
+  group.add(cap);
+
+  // 4. Outer glass lens facing outward (to the side)
+  const lensGeo = new THREE.CircleGeometry(0.048, 16);
+  if (isLeft) lensGeo.rotateY(-Math.PI / 2);
+  else lensGeo.rotateY(Math.PI / 2);
+  const lMat = new THREE.MeshBasicMaterial({ color: 0xffe6ad, toneMapped: false });
+  const lens = new THREE.Mesh(lensGeo, lMat);
+  lens.position.set(sign * 0.145, 0, 0);
+  group.add(lens);
+
+  // 5. Soft outward glow flare
+  const glowMat = new THREE.SpriteMaterial({
+    map: getSharedGlowTexture(),
+    color: 0xffdf99,
+    transparent: true,
+    opacity: 0,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+  });
+  const glow = new THREE.Sprite(glowMat);
+  glow.scale.set(0.85, 0.85, 0.85);
+  glow.position.set(sign * 0.165, 0, 0);
+  group.add(glow);
+
+  // 6. Warm ground PointLight illuminating driving wheels & trackside ground
+  const light = new THREE.PointLight(0xffdf99, 0, 14, 1.5);
+  light.position.set(sign * 0.20, -0.10, 0);
+  group.add(light);
+
+  return { group, light, glow, lensMat: lMat };
+}
+
 function updateHeadlights(dt) {
   if (!headlightGroup || !headSpot) return;
   const isNight = dayCycle.isNight();
@@ -1146,6 +1290,7 @@ function updateHeadlights(dt) {
 
   headlightIntensity = THREE.MathUtils.lerp(headlightIntensity, targetLevel, Math.min(1, dt * 3.5));
 
+  // Center Headlight
   headSpot.intensity = headlightIntensity * 4.8;
   frontFillLight.intensity = headlightIntensity * 1.6;
   beamCone.material.opacity = headlightIntensity * 0.22;
@@ -1157,6 +1302,54 @@ function updateHeadlights(dt) {
       0.25 + headlightIntensity * 0.75,
       0.25 + headlightIntensity * 0.73,
       0.22 + headlightIntensity * 0.65
+    );
+  }
+
+  // Left & Right Front Marker Lamps
+  if (leftMarker) {
+    leftMarker.spot.intensity = headlightIntensity * 2.4;
+    leftMarker.cone.material.opacity = headlightIntensity * 0.16;
+    leftMarker.cone.visible = headlightIntensity > 0.01;
+    leftMarker.glow.material.opacity = headlightIntensity * 0.85;
+    leftMarker.glow.visible = headlightIntensity > 0.01;
+    leftMarker.lensMat.color.setRGB(
+      0.25 + headlightIntensity * 0.75,
+      0.25 + headlightIntensity * 0.73,
+      0.22 + headlightIntensity * 0.65
+    );
+  }
+  if (rightMarker) {
+    rightMarker.spot.intensity = headlightIntensity * 2.4;
+    rightMarker.cone.material.opacity = headlightIntensity * 0.16;
+    rightMarker.cone.visible = headlightIntensity > 0.01;
+    rightMarker.glow.material.opacity = headlightIntensity * 0.85;
+    rightMarker.glow.visible = headlightIntensity > 0.01;
+    rightMarker.lensMat.color.setRGB(
+      0.25 + headlightIntensity * 0.75,
+      0.25 + headlightIntensity * 0.73,
+      0.22 + headlightIntensity * 0.65
+    );
+  }
+
+  // Left & Right Side Flank Inspection Lamps
+  if (leftFlank) {
+    leftFlank.light.intensity = headlightIntensity * 1.8;
+    leftFlank.glow.material.opacity = headlightIntensity * 0.80;
+    leftFlank.glow.visible = headlightIntensity > 0.01;
+    leftFlank.lensMat.color.setRGB(
+      0.25 + headlightIntensity * 0.75,
+      0.23 + headlightIntensity * 0.65,
+      0.18 + headlightIntensity * 0.50
+    );
+  }
+  if (rightFlank) {
+    rightFlank.light.intensity = headlightIntensity * 1.8;
+    rightFlank.glow.material.opacity = headlightIntensity * 0.80;
+    rightFlank.glow.visible = headlightIntensity > 0.01;
+    rightFlank.lensMat.color.setRGB(
+      0.25 + headlightIntensity * 0.75,
+      0.23 + headlightIntensity * 0.65,
+      0.18 + headlightIntensity * 0.50
     );
   }
 }
@@ -1208,10 +1401,28 @@ function assembleTrain(locoGltf, coachAGltf, coachBGltf) {
   chimneyAnchor.getWorldPosition(_chimneyWP);
   smokeSystem.seedPlume(_chimneyWP);
 
-  // ── Locomotive Headlight (Front Night Illumination) ──
+  // ── Locomotive Headlight & Left/Right Engine Lights ──
   headlightGroup = createLocomotiveHeadlight();
   headlightGroup.position.set(0, 0.96, 1.31);
   loco.add(headlightGroup);
+
+  // Left & Right Front Marker Lamps (pilot / ditch lights)
+  leftMarker = createMarkerLantern(true);
+  leftMarker.group.position.set(-0.42, 0.54, 1.22);
+  loco.add(leftMarker.group);
+
+  rightMarker = createMarkerLantern(false);
+  rightMarker.group.position.set(0.42, 0.54, 1.22);
+  loco.add(rightMarker.group);
+
+  // Left & Right Side Flank Inspection Lamps (running board / ground lights)
+  leftFlank = createSideFlankLantern(true);
+  leftFlank.group.position.set(-0.66, 0.72, 0.05);
+  loco.add(leftFlank.group);
+
+  rightFlank = createSideFlankLantern(false);
+  rightFlank.group.position.set(0.66, 0.72, 0.05);
+  loco.add(rightFlank.group);
 
   // ── 2. Five Coaches ──
   const tpls  = [coachAGltf, coachBGltf, coachAGltf, coachBGltf, coachAGltf];
