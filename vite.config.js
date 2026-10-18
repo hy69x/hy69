@@ -10,7 +10,5 @@ export default defineConfig({
     assetsInlineLimit: 0,
     chunkSizeWarningLimit: 800,
   },
-  // GLB files in /assets/models/ are served as-is by the dev server
-  // (they live in the project root, not a publicDir)
-  assetsInclude: ['**/*.glb', '**/*.gltf'],
+  publicDir: 'public',
 });
