@@ -1243,67 +1243,9 @@ function initAudio() {
   masterGain.gain.value = soundMuted ? 0 : 0.85;
   masterGain.connect(audioCtx.destination);
 
-  // 1. Continuous boiler steam hiss
-  const bufSize = audioCtx.sampleRate * 2;
-  const buf = audioCtx.createBuffer(1, bufSize, audioCtx.sampleRate);
-  const d = buf.getChannelData(0);
-  for (let i = 0; i < bufSize; i++) d[i] = Math.random() * 2 - 1;
-  const hissSource = audioCtx.createBufferSource();
-  hissSource.buffer = buf;
-  hissSource.loop = true;
-  const hissFilter = audioCtx.createBiquadFilter();
-  hissFilter.type = 'bandpass';
-  hissFilter.frequency.value = 850;
-  hissFilter.Q.value = 0.8;
-  const hissGain = audioCtx.createGain();
-  hissGain.gain.value = 0.045;
-  hissSource.connect(hissFilter);
-  hissFilter.connect(hissGain);
-  hissGain.connect(masterGain);
-  hissSource.start();
+  loadSoundBuffers();
 
-  // 2. Chuffing loop (4-stroke steam exhaust cadence)
-  let chuffCount = 0;
-  function triggerChuff() {
-    if (!audioCtx || !trainReady || soundMuted || audioCtx.state !== 'running') return;
-    chuffCount++;
-    const isHeavy = (chuffCount % 2 === 1);
-    const now = audioCtx.currentTime;
-
-    const osc = audioCtx.createOscillator();
-    const env = audioCtx.createGain();
-    osc.type = 'sine';
-    const startFreq = isHeavy ? 95 : 75;
-    osc.frequency.setValueAtTime(startFreq, now);
-    osc.frequency.exponentialRampToValueAtTime(26, now + 0.16);
-
-    const peakGain = isHeavy ? 0.38 : 0.24;
-    env.gain.setValueAtTime(peakGain, now);
-    env.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
-    osc.connect(env);
-    env.connect(masterGain);
-    osc.start(now);
-    osc.stop(now + 0.19);
-
-    const nBuf = audioCtx.createBuffer(1, Math.floor(audioCtx.sampleRate * 0.16), audioCtx.sampleRate);
-    const nData = nBuf.getChannelData(0);
-    for (let i = 0; i < nData.length; i++) nData[i] = Math.random() * 2 - 1;
-    const nSource = audioCtx.createBufferSource();
-    nSource.buffer = nBuf;
-    const nFilter = audioCtx.createBiquadFilter();
-    nFilter.type = 'lowpass';
-    nFilter.frequency.value = isHeavy ? 560 : 420;
-    const nGain = audioCtx.createGain();
-    nGain.gain.setValueAtTime(isHeavy ? 0.22 : 0.14, now);
-    nGain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
-    nSource.connect(nFilter);
-    nFilter.connect(nGain);
-    nGain.connect(masterGain);
-    nSource.start(now);
-    nSource.stop(now + 0.16);
-  }
-
-  // 3. Wheel-rail joint click-clack
+  // Gentle rail joint click-clack accent
   function triggerRailClack() {
     if (!audioCtx || !trainReady || soundMuted || audioCtx.state !== 'running') return;
     const now = audioCtx.currentTime;
@@ -1313,10 +1255,10 @@ function initAudio() {
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
       osc.type = 'triangle';
-      osc.frequency.setValueAtTime(idx === 0 ? 210 : 260, t);
-      osc.frequency.exponentialRampToValueAtTime(90, t + 0.05);
+      osc.frequency.setValueAtTime(idx === 0 ? 190 : 230, t);
+      osc.frequency.exponentialRampToValueAtTime(80, t + 0.05);
 
-      gain.gain.setValueAtTime(idx === 0 ? 0.26 : 0.18, t);
+      gain.gain.setValueAtTime(idx === 0 ? 0.08 : 0.05, t);
       gain.gain.exponentialRampToValueAtTime(0.001, t + 0.06);
 
       osc.connect(gain);
@@ -1326,41 +1268,67 @@ function initAudio() {
     });
   }
 
-  setInterval(triggerChuff, 310);
   setInterval(triggerRailClack, (TRACK_W / SPEED) * 1000);
-  loadHornAudio();
 }
 
-let hornAudioBuffer = null;
+let hornBuffer = null;
+let ambientBuffer = null;
+let ambientSource = null;
 
-async function loadHornAudio() {
+async function loadSoundBuffers() {
   if (!audioCtx) return;
-  if (hornAudioBuffer) return hornAudioBuffer;
+
+  // 1. Pixabay City Train Horn (city-train-493986)
+  if (!hornBuffer) {
+    try {
+      const res = await fetch('assets/sounds/horn.mp3');
+      if (res.ok) {
+        const arrayBuf = await res.arrayBuffer();
+        hornBuffer = await audioCtx.decodeAudioData(arrayBuf);
+      }
+    } catch (err) {
+      console.warn('Horn audio load fallback:', err);
+    }
+  }
+
+  // 2. Pixabay Railway Train Ambient Sound (film-special-effects-railway-train-339502)
+  if (!ambientBuffer) {
+    try {
+      const res = await fetch('assets/sounds/train-ambient.mp3');
+      if (res.ok) {
+        const arrayBuf = await res.arrayBuffer();
+        ambientBuffer = await audioCtx.decodeAudioData(arrayBuf);
+        startAmbientLoop();
+      }
+    } catch (err) {
+      console.warn('Ambient audio load error:', err);
+    }
+  }
+}
+
+function startAmbientLoop() {
+  if (!audioCtx || !ambientBuffer || ambientSource) return;
   try {
-    const res = await fetch('assets/sounds/choo-choo.mp3');
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const arrayBuf = await res.arrayBuffer();
-    hornAudioBuffer = await audioCtx.decodeAudioData(arrayBuf);
-    return hornAudioBuffer;
+    ambientSource = audioCtx.createBufferSource();
+    ambientSource.buffer = ambientBuffer;
+    ambientSource.loop = true;
+    const ambGain = audioCtx.createGain();
+    ambGain.gain.value = 0.85;
+    ambientSource.connect(ambGain);
+    ambGain.connect(masterGain);
+    ambientSource.start();
   } catch (err) {
-    console.warn('Horn audio fallback to synth:', err);
-    return null;
+    console.warn('Ambient start error:', err);
   }
 }
 
 export function playHorn() {
   ensureAudioReady();
 
-  // 1. Visual steam burst from locomotive smokestack (timed with the authentic choo-choo dual blasts)
+  // 1. Visual steam burst from locomotive smokestack
   if (chimneyAnchor && smokeSystem) {
     chimneyAnchor.getWorldPosition(_chimneyWP);
     smokeSystem.burstWhistle(_chimneyWP);
-    setTimeout(() => {
-      if (chimneyAnchor && smokeSystem) {
-        chimneyAnchor.getWorldPosition(_chimneyWP);
-        smokeSystem.burstWhistle(_chimneyWP);
-      }
-    }, 2850);
   }
 
   // 2. Visual button push feedback in HUD
@@ -1372,10 +1340,10 @@ export function playHorn() {
 
   if (!audioCtx || soundMuted) return;
 
-  // 3. Play real recorded "choo-choo" steam locomotive horn
-  if (hornAudioBuffer) {
+  // 3. Play Pixabay city-train-493986 horn sound
+  if (hornBuffer) {
     const src = audioCtx.createBufferSource();
-    src.buffer = hornAudioBuffer;
+    src.buffer = hornBuffer;
     const gainNode = audioCtx.createGain();
     gainNode.gain.value = 1.0;
     src.connect(gainNode);
@@ -1384,22 +1352,19 @@ export function playHorn() {
     return;
   }
 
-  // Pre-load or play on load if not cached yet
-  loadHornAudio().then(buf => {
-    if (buf && audioCtx && !soundMuted) {
+  loadSoundBuffers().then(() => {
+    if (hornBuffer && audioCtx && !soundMuted) {
       const src = audioCtx.createBufferSource();
-      src.buffer = buf;
+      src.buffer = hornBuffer;
       src.connect(masterGain);
       src.start();
     }
   });
 
+  // Procedural synthesizer fallback
   const now = audioCtx.currentTime;
   const duration = 1.6;
-
-  // Nathan 3-chime locomotive passenger whistle fallback
   const chimes = [440, 554.37, 659.25, 880];
-
   const lfo = audioCtx.createOscillator();
   const lfoGain = audioCtx.createGain();
   lfo.frequency.value = 5.8;
@@ -1411,54 +1376,24 @@ export function playHorn() {
   chimes.forEach((freq, idx) => {
     const osc = audioCtx.createOscillator();
     const chimeGain = audioCtx.createGain();
-
     osc.type = 'sawtooth';
     osc.frequency.setValueAtTime(freq, now);
     lfoGain.connect(osc.frequency);
-
     const filter = audioCtx.createBiquadFilter();
     filter.type = 'bandpass';
     filter.frequency.value = freq;
     filter.Q.value = 3.5;
-
     const amp = [0.18, 0.16, 0.14, 0.07][idx];
     chimeGain.gain.setValueAtTime(0.0001, now);
     chimeGain.gain.linearRampToValueAtTime(amp, now + 0.07);
     chimeGain.gain.setValueAtTime(amp, now + 1.05);
     chimeGain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
-
     osc.connect(filter);
     filter.connect(chimeGain);
     chimeGain.connect(masterGain);
-
     osc.start(now);
     osc.stop(now + duration + 0.05);
   });
-
-  const noiseLen = Math.floor(audioCtx.sampleRate * duration);
-  const nBuf = audioCtx.createBuffer(1, noiseLen, audioCtx.sampleRate);
-  const nData = nBuf.getChannelData(0);
-  for (let i = 0; i < noiseLen; i++) nData[i] = Math.random() * 2 - 1;
-
-  const nSource = audioCtx.createBufferSource();
-  nSource.buffer = nBuf;
-  const nFilter = audioCtx.createBiquadFilter();
-  nFilter.type = 'bandpass';
-  nFilter.frequency.value = 2300;
-  nFilter.Q.value = 2.2;
-
-  const nGain = audioCtx.createGain();
-  nGain.gain.setValueAtTime(0.0001, now);
-  nGain.gain.linearRampToValueAtTime(0.12, now + 0.08);
-  nGain.gain.setValueAtTime(0.12, now + 0.95);
-  nGain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
-
-  nSource.connect(nFilter);
-  nFilter.connect(nGain);
-  nGain.connect(masterGain);
-
-  nSource.start(now);
-  nSource.stop(now + duration + 0.05);
 }
 
 export function toggleSound() {
@@ -1467,6 +1402,9 @@ export function toggleSound() {
   const btn = document.getElementById('sound-btn');
   if (masterGain && audioCtx) {
     masterGain.gain.setValueAtTime(soundMuted ? 0 : 0.85, audioCtx.currentTime);
+  }
+  if (!soundMuted && ambientBuffer && !ambientSource) {
+    startAmbientLoop();
   }
   if (btn) {
     btn.textContent = soundMuted ? '🔇 Sound: OFF' : '🔊 Sound: ON';
