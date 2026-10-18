@@ -2,6 +2,7 @@
 //  UI — panel rendering for each portfolio section
 // ─────────────────────────────────────────────────────────────
 import { PORTFOLIO } from './data.js';
+import { ICONS } from './icons.js';
 
 const panel      = document.getElementById('panel');
 const panelInner = document.getElementById('panel-inner');
@@ -37,7 +38,7 @@ function buildSection(section) {
 // ── Locomotive (intro) ────────────────────────────────────────
 function buildLoco() {
   return `
-    <h2>🚂 ${PORTFOLIO.name}</h2>
+    <h2><span class="heading-icon">${ICONS.loco(24)}</span> ${PORTFOLIO.name}</h2>
     <h3>${PORTFOLIO.title}</h3>
     <p style="margin-top:1rem">${PORTFOLIO.tagline}</p>
     <div class="tag-list" style="margin-top:1.5rem">
@@ -54,14 +55,14 @@ function buildLoco() {
 // ── About ─────────────────────────────────────────────────────
 function buildAbout() {
   return `
-    <h2>👤 About Me</h2>
+    <h2><span class="heading-icon">${ICONS.about(24)}</span> About Me</h2>
     <p style="margin-top:1rem;line-height:1.8">${PORTFOLIO.about}</p>
     <h3>Quick Facts</h3>
     <div class="tag-list">
-      <span class="tag">📍 Remote-first</span>
-      <span class="tag">🎓 CS Graduate</span>
-      <span class="tag">⏱ 5+ years exp</span>
-      <span class="tag">🌐 Fullstack</span>
+      <span class="tag">Remote-first</span>
+      <span class="tag">CS Graduate</span>
+      <span class="tag">5+ years exp</span>
+      <span class="tag">Fullstack</span>
     </div>
   `;
 }
@@ -78,7 +79,7 @@ function buildSkills() {
       </div>
     </div>
   `).join('');
-  return `<h2>💻 Skills</h2><div style="margin-top:1.2rem">${bars}</div>`;
+  return `<h2><span class="heading-icon">${ICONS.skills(24)}</span> Skills</h2><div style="margin-top:1.2rem">${bars}</div>`;
 }
 
 // ── Projects ──────────────────────────────────────────────────
@@ -90,26 +91,30 @@ function buildProjects() {
         <h4>${p.title}</h4>
         <p>${p.description}</p>
         <div class="tag-list tech">${tech}</div>
-        ${p.link !== '#' ? `<a href="${p.link}" target="_blank" style="font-size:0.8rem;color:var(--accent);margin-top:0.6rem;display:inline-block">View →</a>` : ''}
+        ${p.link !== '#' ? `<a href="${p.link}" target="_blank" class="project-link">View Project →</a>` : ''}
       </div>
     `;
   }).join('');
-  return `<h2>🚀 Projects</h2><div style="margin-top:1rem">${cards}</div>`;
+  return `<h2><span class="heading-icon">${ICONS.projects(24)}</span> Projects</h2><div style="margin-top:1rem">${cards}</div>`;
 }
 
 // ── Interests ─────────────────────────────────────────────────
 function buildInterests() {
-  const cards = PORTFOLIO.interests.map(i => `
-    <div class="interest-card">
-      <span class="emoji">${i.emoji}</span>
-      ${i.label}
-    </div>
-  `).join('');
+  const cards = PORTFOLIO.interests.map(i => {
+    const iconSvg = ICONS[i.icon] ? ICONS[i.icon](24) : ICONS.interests(24);
+    return `
+      <div class="interest-card">
+        <span class="interest-icon">${iconSvg}</span>
+        ${i.label}
+      </div>
+    `;
+  }).join('');
+
   return `
-    <h2>🎯 Interests</h2>
+    <h2><span class="heading-icon">${ICONS.interests(24)}</span> Interests</h2>
     <div class="interest-grid">${cards}</div>
     <div class="spotify-section" style="margin-top:2rem;">
-      <h3>🎧 Journey Soundtrack</h3>
+      <h3><span class="heading-icon" style="color:#1ed760">${ICONS.spotify(18)}</span> Journey Soundtrack</h3>
       <p style="font-size:0.84rem; opacity:0.65; margin:0.4rem 0 0.9rem;">My curated playlist for late-night coding and scenic train rides.</p>
       <iframe
         style="border-radius:12px; border:none; width:100%; box-shadow:0 8px 24px rgba(0,0,0,0.4);"
@@ -126,19 +131,19 @@ function buildInterests() {
 function buildContact() {
   const { email, github, linkedin, twitter } = PORTFOLIO.contact;
   return `
-    <h2>📬 Contact</h2>
+    <h2><span class="heading-icon">${ICONS.contact(24)}</span> Contact</h2>
     <p style="margin:0.8rem 0 1.4rem;opacity:0.7">Let's build something great together.</p>
     <a href="mailto:${email}" class="contact-link">
-      <span class="icon">✉️</span> ${email}
+      <span class="icon">${ICONS.mail(18)}</span> ${email}
     </a>
     <a href="${github}" target="_blank" class="contact-link">
-      <span class="icon">🐙</span> GitHub
+      <span class="icon">${ICONS.github(18)}</span> GitHub
     </a>
     <a href="${linkedin}" target="_blank" class="contact-link">
-      <span class="icon">💼</span> LinkedIn
+      <span class="icon">${ICONS.linkedin(18)}</span> LinkedIn
     </a>
     <a href="${twitter}" target="_blank" class="contact-link">
-      <span class="icon">🐦</span> Twitter / X
+      <span class="icon">${ICONS.twitter(18)}</span> Twitter / X
     </a>
   `;
 }

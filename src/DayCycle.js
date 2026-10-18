@@ -99,16 +99,16 @@ export class DayCycle {
     return 0.005;
   }
 
-  /** Human readable label + icon for the HUD */
+  /** Human readable label + icon key for the HUD */
   getLabel() {
     const h = this._hour;
-    if (h < 5  || h >= 22) return { icon: '🌙', label: 'Night' };
-    if (h < 7)             return { icon: '🌅', label: 'Dawn' };
-    if (h < 12)            return { icon: '🌤', label: 'Morning' };
-    if (h < 17)            return { icon: '☀️', label: 'Afternoon' };
-    if (h < 19)            return { icon: '🌇', label: 'Golden Hour' };
-    if (h < 21)            return { icon: '🌆', label: 'Dusk' };
-    return                        { icon: '🌙', label: 'Night' };
+    if (h < 5  || h >= 22) return { iconKey: 'night',     label: 'Night' };
+    if (h < 7)             return { iconKey: 'dawn',      label: 'Dawn' };
+    if (h < 12)            return { iconKey: 'morning',   label: 'Morning' };
+    if (h < 17)            return { iconKey: 'afternoon', label: 'Afternoon' };
+    if (h < 19)            return { iconKey: 'golden',    label: 'Golden Hour' };
+    if (h < 21)            return { iconKey: 'dusk',      label: 'Dusk' };
+    return                        { iconKey: 'night',     label: 'Night' };
   }
 
   /** Are we in night hours? */

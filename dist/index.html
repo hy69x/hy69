@@ -4,8 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Portfolio — Train Journey</title>
-    <script type="module" crossorigin src="/assets/index-DOdfVgF7.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-Lh79Jl3t.css">
+    <script type="module" crossorigin src="/assets/index-Dui_BjU5.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-CV-Ks0pV.css">
   </head>
   <body>
     <canvas id="canvas"></canvas>
@@ -21,8 +21,12 @@
           <div class="rail rail-top"></div>
           <div class="rail rail-bot"></div>
         </div>
-        <!-- Train emoji that chugs across -->
-        <div class="loading-train" id="loadingTrain">🚂</div>
+        <!-- Train silhouette that chugs across -->
+        <div class="loading-train" id="loadingTrain">
+          <svg class="ui-icon" width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 15h12"/><path d="M4 11V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v5"/><path d="m4 11 2 4h12l2-4"/><circle cx="8" cy="18" r="2"/><circle cx="16" cy="18" r="2"/><path d="M9 18h6"/><path d="M8 8h8"/>
+          </svg>
+        </div>
         <!-- Smoke puffs -->
         <div class="puff" id="p1"></div>
         <div class="puff" id="p2"></div>
@@ -44,22 +48,37 @@
 
     <!-- ─── HUD ────────────────────────────────────────────── -->
     <div id="hud">
-      <div id="time-badge" title="Click or press T to change time of day (Night, Dawn, Day, Dusk)">
-        <span id="time-icon">🌤</span>
-        <span id="time-label">Afternoon</span>
+      <div id="time-badge" class="hud-item" title="Click or press T to change time of day (Night, Dawn, Day, Dusk)">
+        <span id="time-icon" class="badge-icon"></span>
+        <span id="time-label" class="badge-text">Afternoon</span>
       </div>
-      <div id="biome-badge">🏔️ Alpine Pass</div>
-      <div id="cam-badge" title="Click or press V to switch camera (5 views)">📷 Side View</div>
-      <button id="spotify-btn" class="hud-btn" title="Toggle Spotify Playlist (Press P)">🟢 Music</button>
-      <button id="horn-btn" class="hud-btn" title="Blow train horn (Press H or Space)">🚂 Pull Horn</button>
-      <button id="sound-btn" class="hud-btn" title="Toggle train audio">🔊 Sound: ON</button>
+      <div id="biome-badge" class="hud-item" title="Current terrain biome">
+        <span id="biome-icon" class="badge-icon"></span>
+        <span id="biome-label" class="badge-text">Alpine Pass</span>
+      </div>
+      <div id="cam-badge" class="hud-item hud-interactive" title="Click or press V to switch camera (5 views)">
+        <span id="cam-icon" class="badge-icon"></span>
+        <span id="cam-label" class="badge-text">Side View</span>
+      </div>
+      <button id="spotify-btn" class="hud-btn" title="Toggle Spotify Playlist (Press P)">
+        <span id="spotify-btn-icon" class="badge-icon"></span>
+        <span class="btn-text">Music</span>
+      </button>
+      <button id="horn-btn" class="hud-btn" title="Blow train horn (Press H or Space)">
+        <span id="horn-btn-icon" class="badge-icon"></span>
+        <span class="btn-text">Horn</span>
+      </button>
+      <button id="sound-btn" class="hud-btn" title="Toggle train audio (Press M)">
+        <span id="sound-icon" class="badge-icon"></span>
+        <span id="sound-label" class="btn-text">Sound: ON</span>
+      </button>
     </div>
 
     <!-- ─── Floating Spotify Dock ───────────────────────────── -->
     <div id="spotify-dock" class="spotify-dock hidden">
       <div class="spotify-dock-header">
         <div class="spotify-dock-title">
-          <span class="spotify-icon">🟢</span>
+          <span id="spotify-dock-icon" class="spotify-icon"></span>
           <span>Spotify Playlist</span>
         </div>
         <button id="spotify-dock-close" class="spotify-action-btn" aria-label="Close Spotify player">✕</button>
@@ -84,22 +103,27 @@
 
     <!-- ─── Coach nav bar ───────────────────────────────────── -->
     <nav id="coach-nav">
-      <button class="coach-btn active" data-coach="0">🚂 Loco</button>
-      <button class="coach-btn" data-coach="1">👤 About</button>
-      <button class="coach-btn" data-coach="2">💻 Skills</button>
-      <button class="coach-btn" data-coach="3">🚀 Projects</button>
-      <button class="coach-btn" data-coach="4">🎯 Interests</button>
-      <button class="coach-btn" data-coach="5">📬 Contact</button>
+      <button class="coach-btn active" data-coach="0"><span id="nav-icon-0" class="nav-icon"></span><span class="nav-text">Loco</span></button>
+      <button class="coach-btn" data-coach="1"><span id="nav-icon-1" class="nav-icon"></span><span class="nav-text">About</span></button>
+      <button class="coach-btn" data-coach="2"><span id="nav-icon-2" class="nav-icon"></span><span class="nav-text">Skills</span></button>
+      <button class="coach-btn" data-coach="3"><span id="nav-icon-3" class="nav-icon"></span><span class="nav-text">Projects</span></button>
+      <button class="coach-btn" data-coach="4"><span id="nav-icon-4" class="nav-icon"></span><span class="nav-text">Interests</span></button>
+      <button class="coach-btn" data-coach="5"><span id="nav-icon-5" class="nav-icon"></span><span class="nav-text">Contact</span></button>
     </nav>
 
     <!-- ─── Hint bar ─────────────────────────────────────────── -->
     <div id="instructions">
-      Click coach or nav to open &nbsp;|&nbsp;
-      <kbd>V</kbd> view &nbsp;|&nbsp;
-      <kbd>T</kbd> time &nbsp;|&nbsp;
-      <kbd>P</kbd> music &nbsp;|&nbsp;
-      <kbd>H</kbd> / <kbd>Space</kbd> horn &nbsp;|&nbsp;
-      Scroll to zoom
+      <span class="desktop-hint">
+        Click coach or nav &nbsp;|&nbsp;
+        <kbd>V</kbd> view &nbsp;|&nbsp;
+        <kbd>T</kbd> time &nbsp;|&nbsp;
+        <kbd>P</kbd> music &nbsp;|&nbsp;
+        <kbd>H</kbd> horn &nbsp;|&nbsp;
+        Scroll to zoom
+      </span>
+      <span class="mobile-hint">
+        Tap coach to open &nbsp;•&nbsp; Pinch to zoom
+      </span>
     </div>
 
     <!-- ─── Audio ───────────────────────────────────────────── -->

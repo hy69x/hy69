@@ -3,6 +3,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { DayCycle } from './DayCycle.js';
 import { Stars }    from './Stars.js';
 import * as UI      from './UI.js';
+import { ICONS }    from './icons.js';
 
 
 
@@ -119,8 +120,7 @@ export const BIOMES = [
   {
     id: 'prairie',
     name: 'Open Prairie',
-    icon: '🌾',
-    text: '🌾 Open Prairie',
+    iconKey: 'prairie',
     mountainFactor: 0.0,
     groundColor: new THREE.Color(0x448a30),      // Vibrant meadow green
     mtnColor: new THREE.Color(0x4a5845),         // Distant rolling green hills
@@ -135,8 +135,7 @@ export const BIOMES = [
   {
     id: 'alpine',
     name: 'Alpine Pass',
-    icon: '🏔️',
-    text: '🏔️ Alpine Pass',
+    iconKey: 'mountain',
     mountainFactor: 1.0,
     groundColor: new THREE.Color(0x324d2a),      // Rocky alpine valley green
     mtnColor: new THREE.Color(0x384541),         // Dark slate granite peaks
@@ -151,8 +150,7 @@ export const BIOMES = [
   {
     id: 'tundra',
     name: 'Frozen Tundra',
-    icon: '❄️',
-    text: '❄️ Frozen Tundra',
+    iconKey: 'snow',
     mountainFactor: 0.92,
     groundColor: new THREE.Color(0xdcecf5),      // Pure pristine snow mantle!
     mtnColor: new THREE.Color(0x7a9caf),         // Glacial ice & slate peaks
@@ -167,8 +165,7 @@ export const BIOMES = [
   {
     id: 'autumn',
     name: 'Autumn Highlands',
-    icon: '🍂',
-    text: '🍂 Autumn Highlands',
+    iconKey: 'autumn',
     mountainFactor: 0.65,
     groundColor: new THREE.Color(0x6e532b),      // Golden highland steppe
     mtnColor: new THREE.Color(0x694230),         // Warm terracotta sandstone bluffs
@@ -239,7 +236,7 @@ export function sampleBlendedBiome(z) {
   _blendedBiome.snowIntensity = THREE.MathUtils.lerp(curBiome.snowIntensity, nextBiome.snowIntensity, t);
   return _blendedBiome;
 }
-let lastBiomeText = '';
+let lastBiomeId = '';
 
 // ── STATIONARY MOUNTAINS (Front & Back Alpine Valley Corridor) ─
 const mtnGroup = new THREE.Group();
@@ -365,7 +362,7 @@ function positionProceduralTree(tree, z) {
   let x, sc, mat;
 
   if (mtnFactor > 0.4) {
-    // 🏔️ Mountain Biome: dense evergreen pine trees climbing foothills
+    // Mountain Biome: dense evergreen pine trees climbing foothills
     if (r < 0.50) {
       x   = side * (32 + Math.random() * 85);
       sc  = 1.1 + Math.random() * 1.3;
@@ -380,7 +377,7 @@ function positionProceduralTree(tree, z) {
       mat = matLeafLight;
     }
   } else {
-    // 🌾 Plains Biome: open prairie with scattered meadow trees and lone scenic pines
+    // Plains Biome: open prairie with scattered meadow trees and lone scenic pines
     if (r < 0.35) {
       x   = side * (40 + Math.random() * 90);
       sc  = 0.9 + Math.random() * 0.8;
@@ -1467,7 +1464,7 @@ function assembleTrain(locoGltf, coachAGltf, coachBGltf) {
     coaches.push({ root: coach, section: sects[i] });
   }
 
-  console.log(`🚂 Train assembled! Total independently rotating axles: ${driveWheels.length}`);
+  console.log(`Train assembled! Total independently rotating axles: ${driveWheels.length}`);
 }
 
 // ── DAY CYCLE ────────────────────────────────────────────────
@@ -1496,8 +1493,14 @@ function applyDayCycle() {
   }
 
   const lbl = dayCycle.getLabel();
-  document.getElementById('time-icon').textContent  = lbl.icon;
-  document.getElementById('time-label').textContent = lbl.label;
+  const timeIconEl = document.getElementById('time-icon');
+  if (timeIconEl) {
+    timeIconEl.innerHTML = ICONS[lbl.iconKey] ? ICONS[lbl.iconKey](15) : ICONS.sun(15);
+  }
+  const timeLabelEl = document.getElementById('time-label');
+  if (timeLabelEl) {
+    timeLabelEl.textContent = lbl.label;
+  }
   updateHeadlights(1.0);
 }
 setInterval(applyDayCycle, 60_000);
@@ -1509,17 +1512,31 @@ export function toggleTime() {
 
 // ── CAMERA MODES & TRACKING ──────────────────────────────────
 export const CAMERA_MODES = [
-  { id: 'side',        label: '📷 Side View',   hint: 'Cinematic tracking camera' },
-  { id: 'cabin',       label: '🚂 Cab View',    hint: 'Driver cabin looking forward over boiler' },
-  { id: 'coach_ahead', label: '🚃 Coach Flank', hint: 'Side of coach looking forward' },
-  { id: 'rear_track',  label: '🛤️ Rear Tracks', hint: 'Back of train looking down tracks' },
-  { id: 'top',         label: '🚁 Top Down',    hint: 'Overhead bird\'s-eye view' },
+  { id: 'side',        label: 'Side View',   hint: 'Cinematic tracking camera' },
+  { id: 'cabin',       label: 'Cab View',    hint: 'Driver cabin looking forward over boiler' },
+  { id: 'coach_ahead', label: 'Coach Flank', hint: 'Side of coach looking forward' },
+  { id: 'rear_track',  label: 'Rear Tracks', hint: 'Back of train looking down tracks' },
+  { id: 'top',         label: 'Top Down',    hint: 'Overhead bird\'s-eye view' },
 ];
 
 let trainReady = false;
 let camModeIdx = 0;
 let camMode = CAMERA_MODES[0].id;
 let camZoom = 1.0;
+
+// ── RESPONSIVE MOBILE ZOOM FACTOR ────────────────────────────
+export function getMobileZoomFactor() {
+  const aspect = window.innerWidth / window.innerHeight;
+  // If in portrait mode or narrow mobile screen, zoom out proportionally
+  if (aspect < 0.65) {
+    return 1.48; // tall mobile phone portrait (e.g. iPhone, modern Android)
+  } else if (aspect < 0.9) {
+    return 1.36; // standard mobile portrait
+  } else if (aspect < 1.15 || window.innerWidth < 768) {
+    return 1.22; // tablet / narrow landscape
+  }
+  return 1.0;    // widescreen desktop
+}
 
 const _wantPos  = new THREE.Vector3();
 const _wantLook = new THREE.Vector3();
@@ -1568,10 +1585,38 @@ window.addEventListener('wheel', e => {
   camZoom = THREE.MathUtils.clamp(camZoom + e.deltaY * 0.0006, MIN_ZOOM, MAX_ZOOM);
 }, { passive: true });
 
+// Mobile touch pinch-to-zoom
+let touchStartDist = 0;
+let initialCamZoom = 1.0;
+
+window.addEventListener('touchstart', e => {
+  if (e.touches.length === 2) {
+    const dx = e.touches[0].clientX - e.touches[1].clientX;
+    const dy = e.touches[0].clientY - e.touches[1].clientY;
+    touchStartDist = Math.hypot(dx, dy);
+    initialCamZoom = camZoom;
+  }
+}, { passive: true });
+
+window.addEventListener('touchmove', e => {
+  if (e.touches.length === 2 && touchStartDist > 0) {
+    const dx = e.touches[0].clientX - e.touches[1].clientX;
+    const dy = e.touches[0].clientY - e.touches[1].clientY;
+    const currentDist = Math.hypot(dx, dy);
+    const factor = touchStartDist / currentDist;
+    camZoom = THREE.MathUtils.clamp(initialCamZoom * factor, MIN_ZOOM, MAX_ZOOM);
+  }
+}, { passive: true });
+
+window.addEventListener('touchend', e => {
+  if (e.touches.length < 2) touchStartDist = 0;
+}, { passive: true });
+
 function snapCamera() {
   if (!coaches.length) return;
   coaches[0].root.getWorldPosition(_locoWP);
-  const cfg = getCameraConfig(camMode, camZoom);
+  const effectiveZoom = camZoom * getMobileZoomFactor();
+  const cfg = getCameraConfig(camMode, effectiveZoom);
   camera.position.copy(_locoWP).add(cfg.pos);
   _wantLook.copy(_locoWP).add(cfg.look);
   camera.lookAt(_wantLook);
@@ -1582,7 +1627,8 @@ function snapCamera() {
 function updateCamera(dt) {
   if (!trainReady) return;
   coaches[0].root.getWorldPosition(_locoWP);
-  const cfg = getCameraConfig(camMode, camZoom);
+  const effectiveZoom = camZoom * getMobileZoomFactor();
+  const cfg = getCameraConfig(camMode, effectiveZoom);
   _wantPos.copy(_locoWP).add(cfg.pos);
   _wantLook.copy(_locoWP).add(cfg.look);
 
@@ -1653,9 +1699,16 @@ export function toggleSound() {
     startBackgroundMusic();
   }
 
+  const iconEl = document.getElementById('sound-icon');
+  if (iconEl) {
+    iconEl.innerHTML = soundMuted ? ICONS.soundOff(15) : ICONS.soundOn(15);
+  }
+  const labelEl = document.getElementById('sound-label');
+  if (labelEl) {
+    labelEl.textContent = soundMuted ? 'Sound: OFF' : 'Sound: ON';
+  }
   const btn = document.getElementById('sound-btn');
   if (btn) {
-    btn.textContent = soundMuted ? '🔇 Sound: OFF' : '🔊 Sound: ON';
     btn.classList.toggle('muted', soundMuted);
   }
 }
@@ -1773,10 +1826,16 @@ renderer.setAnimationLoop(() => {
   // Dynamically update HUD landscape badge (Prairie vs Alpine Pass vs Frozen Tundra vs Autumn Highlands)
   const biomeInterp = getBiomeInterpolation(tz);
   const dominant = biomeInterp.dominantBiome;
-  if (dominant.text !== lastBiomeText) {
-    lastBiomeText = dominant.text;
-    const badgeEl = document.getElementById('biome-badge');
-    if (badgeEl) badgeEl.textContent = dominant.text;
+  if (dominant.id !== lastBiomeId) {
+    lastBiomeId = dominant.id;
+    const iconEl = document.getElementById('biome-icon');
+    if (iconEl) {
+      iconEl.innerHTML = ICONS[dominant.iconKey] ? ICONS[dominant.iconKey](15) : ICONS.mountain(15);
+    }
+    const labelEl = document.getElementById('biome-label');
+    if (labelEl) {
+      labelEl.textContent = dominant.name;
+    }
   }
 
   updateCamera(dt);
@@ -1786,25 +1845,49 @@ renderer.setAnimationLoop(() => {
 
 // ── INIT ─────────────────────────────────────────────────────
 async function init() {
+  // Initialize static UI vector icons
+  const navIcons = [ICONS.loco(15), ICONS.about(15), ICONS.skills(15), ICONS.projects(15), ICONS.interests(15), ICONS.contact(15)];
+  navIcons.forEach((svg, i) => {
+    const el = document.getElementById(`nav-icon-${i}`);
+    if (el) el.innerHTML = svg;
+  });
+
+  const camIconEl = document.getElementById('cam-icon');
+  if (camIconEl) camIconEl.innerHTML = ICONS.camera(15);
+  const camLabelEl = document.getElementById('cam-label');
+  if (camLabelEl) camLabelEl.textContent = CAMERA_MODES[camModeIdx].label;
+
+  const spotifyBtnIcon = document.getElementById('spotify-btn-icon');
+  if (spotifyBtnIcon) spotifyBtnIcon.innerHTML = ICONS.spotify(16);
+
+  const hornBtnIcon = document.getElementById('horn-btn-icon');
+  if (hornBtnIcon) hornBtnIcon.innerHTML = ICONS.horn(15);
+
+  const soundIcon = document.getElementById('sound-icon');
+  if (soundIcon) soundIcon.innerHTML = ICONS.soundOn(15);
+
+  const spotifyDockIcon = document.getElementById('spotify-dock-icon');
+  if (spotifyDockIcon) spotifyDockIcon.innerHTML = ICONS.spotify(18);
+
   applyDayCycle();
 
-  setProgress(0, '🛤️  Loading track & ballast…');
+  setProgress(0, 'Loading track & ballast…');
   const trackGltf = await loadGLTF('assets/models/track-detailed.glb',
-    f => setProgress(f * 0.12, '🛤️  Loading track…'));
+    f => setProgress(f * 0.12, 'Loading track…'));
   spawnTrackPool(trackGltf.scene);
-  setProgress(0.12, '🛤️  Track & ballast ready!');
+  setProgress(0.12, 'Track & ballast ready');
 
   const locoGltf = await loadGLTF('assets/models/locomotive.glb',
-    f => setProgress(0.12 + f * 0.34, '🚂  Loading locomotive…'));
-  setProgress(0.46, '🚂  Locomotive ready!');
+    f => setProgress(0.12 + f * 0.34, 'Loading locomotive…'));
+  setProgress(0.46, 'Locomotive ready');
 
   const coachAGltf = await loadGLTF('assets/models/coach-a.glb',
-    f => setProgress(0.46 + f * 0.27, '🚃  Loading coaches…'));
-  setProgress(0.73, '🚃  Coach A ready!');
+    f => setProgress(0.46 + f * 0.27, 'Loading coaches…'));
+  setProgress(0.73, 'Coach A ready');
 
   const coachBGltf = await loadGLTF('assets/models/coach-b.glb',
-    f => setProgress(0.73 + f * 0.27, '🚃  Finalising…'));
-  setProgress(1, '✅  All aboard!');
+    f => setProgress(0.73 + f * 0.27, 'Finalising…'));
+  setProgress(1, 'All aboard');
 
   assembleTrain(locoGltf, coachAGltf, coachBGltf);
   trainReady = true;
@@ -1826,8 +1909,8 @@ async function init() {
 }
 
 init().catch(err => {
-  console.error('❌', err);
-  stepEl.textContent = '❌ ' + (err?.message || String(err));
+  console.error('Initialization error:', err);
+  stepEl.textContent = 'Error: ' + (err?.message || String(err));
   stepEl.style.color = '#ff6666';
 });
 
@@ -1895,7 +1978,10 @@ window.addEventListener('keydown', e => {
 function toggleCam() {
   camModeIdx = (camModeIdx + 1) % CAMERA_MODES.length;
   camMode = CAMERA_MODES[camModeIdx].id;
-  document.getElementById('cam-badge').textContent = CAMERA_MODES[camModeIdx].label;
+  const camIconEl = document.getElementById('cam-icon');
+  if (camIconEl) camIconEl.innerHTML = ICONS.camera(15);
+  const camLabelEl = document.getElementById('cam-label');
+  if (camLabelEl) camLabelEl.textContent = CAMERA_MODES[camModeIdx].label;
   if (trainReady) snapCamera();
 }
 
@@ -1934,4 +2020,5 @@ window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
+  if (trainReady) snapCamera();
 });
