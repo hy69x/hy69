@@ -1218,9 +1218,23 @@ function updateCamera(dt) {
 }
 
 // ── AUDIO SYSTEM (Train Running Sounds & Whistle Horn) ─────────
-let audioCtx   = null;
-let masterGain = null;
-let soundMuted = false;
+let audioCtx       = null;
+let masterGain     = null;
+let soundMuted     = false;
+let hornBuffer     = null;
+let ambientBuffer  = null;
+let ambientSource  = null;
+let ambientGain    = null;
+let bgMusicAllowed = false;
+
+// Preload audio files immediately over network
+const hornPromise = fetch('assets/sounds/horn.mp3')
+  .then(res => res.ok ? res.arrayBuffer() : null)
+  .catch(err => { console.warn('Failed to fetch horn.mp3:', err); return null; });
+
+const ambientPromise = fetch('assets/sounds/train-ambient.mp3')
+  .then(res => res.ok ? res.arrayBuffer() : null)
+  .catch(err => { console.warn('Failed to fetch train-ambient.mp3:', err); return null; });
 
 function ensureAudioReady() {
   if (!audioCtx) {
@@ -1243,82 +1257,54 @@ function initAudio() {
   masterGain.gain.value = soundMuted ? 0 : 0.85;
   masterGain.connect(audioCtx.destination);
 
-  loadSoundBuffers();
-
-  // Gentle rail joint click-clack accent
-  function triggerRailClack() {
-    if (!audioCtx || !trainReady || soundMuted || audioCtx.state !== 'running') return;
-    const now = audioCtx.currentTime;
-
-    [0, 0.08].forEach((offset, idx) => {
-      const t = now + offset;
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(idx === 0 ? 190 : 230, t);
-      osc.frequency.exponentialRampToValueAtTime(80, t + 0.05);
-
-      gain.gain.setValueAtTime(idx === 0 ? 0.08 : 0.05, t);
-      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.06);
-
-      osc.connect(gain);
-      gain.connect(masterGain);
-      osc.start(t);
-      osc.stop(t + 0.07);
+  // Decode pre-fetched audio buffers
+  if (!hornBuffer) {
+    hornPromise.then(ab => {
+      if (ab && audioCtx) {
+        audioCtx.decodeAudioData(ab.slice(0))
+          .then(buf => { hornBuffer = buf; })
+          .catch(e => console.warn('Horn decode error:', e));
+      }
     });
   }
 
-  setInterval(triggerRailClack, (TRACK_W / SPEED) * 1000);
-}
-
-let hornBuffer = null;
-let ambientBuffer = null;
-let ambientSource = null;
-
-async function loadSoundBuffers() {
-  if (!audioCtx) return;
-
-  // 1. Pixabay City Train Horn (city-train-493986)
-  if (!hornBuffer) {
-    try {
-      const res = await fetch('assets/sounds/horn.mp3');
-      if (res.ok) {
-        const arrayBuf = await res.arrayBuffer();
-        hornBuffer = await audioCtx.decodeAudioData(arrayBuf);
-      }
-    } catch (err) {
-      console.warn('Horn audio load fallback:', err);
-    }
-  }
-
-  // 2. Pixabay Railway Train Ambient Sound (film-special-effects-railway-train-339502)
   if (!ambientBuffer) {
-    try {
-      const res = await fetch('assets/sounds/train-ambient.mp3');
-      if (res.ok) {
-        const arrayBuf = await res.arrayBuffer();
-        ambientBuffer = await audioCtx.decodeAudioData(arrayBuf);
-        startAmbientLoop();
+    ambientPromise.then(ab => {
+      if (ab && audioCtx) {
+        audioCtx.decodeAudioData(ab.slice(0))
+          .then(buf => {
+            ambientBuffer = buf;
+            if (!soundMuted && audioCtx.state === 'running' && !ambientSource && bgMusicAllowed) {
+              startAmbientLoop();
+            }
+          })
+          .catch(e => console.warn('Ambient decode error:', e));
       }
-    } catch (err) {
-      console.warn('Ambient audio load error:', err);
-    }
+    });
   }
 }
 
 function startAmbientLoop() {
-  if (!audioCtx || !ambientBuffer || ambientSource) return;
+  if (!audioCtx || !ambientBuffer || ambientSource || soundMuted) return;
   try {
     ambientSource = audioCtx.createBufferSource();
     ambientSource.buffer = ambientBuffer;
     ambientSource.loop = true;
-    const ambGain = audioCtx.createGain();
-    ambGain.gain.value = 0.85;
-    ambientSource.connect(ambGain);
-    ambGain.connect(masterGain);
-    ambientSource.start();
+    ambientGain = audioCtx.createGain();
+    ambientGain.gain.value = 0.65; // balanced authentic train running volume
+    ambientSource.connect(ambientGain);
+    ambientGain.connect(masterGain);
+    ambientSource.start(0);
   } catch (err) {
     console.warn('Ambient start error:', err);
+  }
+}
+
+export function startBackgroundMusic() {
+  bgMusicAllowed = true;
+  ensureAudioReady();
+  if (audioCtx && audioCtx.state === 'running' && ambientBuffer && !ambientSource && !soundMuted) {
+    startAmbientLoop();
   }
 }
 
@@ -1340,60 +1326,30 @@ export function playHorn() {
 
   if (!audioCtx || soundMuted) return;
 
-  // 3. Play Pixabay city-train-493986 horn sound
+  // 3. Play the authentic 7-second Pixabay horn
   if (hornBuffer) {
     const src = audioCtx.createBufferSource();
     src.buffer = hornBuffer;
-    const gainNode = audioCtx.createGain();
-    gainNode.gain.value = 1.0;
-    src.connect(gainNode);
-    gainNode.connect(masterGain);
-    src.start();
-    return;
+    const hornGainNode = audioCtx.createGain();
+    hornGainNode.gain.value = 1.0;
+    src.connect(hornGainNode);
+    hornGainNode.connect(masterGain);
+    src.start(0);
+  } else {
+    hornPromise.then(ab => {
+      if (ab && audioCtx) {
+        audioCtx.decodeAudioData(ab.slice(0)).then(buf => {
+          hornBuffer = buf;
+          if (!soundMuted) {
+            const src = audioCtx.createBufferSource();
+            src.buffer = hornBuffer;
+            src.connect(masterGain);
+            src.start(0);
+          }
+        });
+      }
+    });
   }
-
-  loadSoundBuffers().then(() => {
-    if (hornBuffer && audioCtx && !soundMuted) {
-      const src = audioCtx.createBufferSource();
-      src.buffer = hornBuffer;
-      src.connect(masterGain);
-      src.start();
-    }
-  });
-
-  // Procedural synthesizer fallback
-  const now = audioCtx.currentTime;
-  const duration = 1.6;
-  const chimes = [440, 554.37, 659.25, 880];
-  const lfo = audioCtx.createOscillator();
-  const lfoGain = audioCtx.createGain();
-  lfo.frequency.value = 5.8;
-  lfoGain.gain.value = 6.0;
-  lfo.connect(lfoGain);
-  lfo.start(now);
-  lfo.stop(now + duration + 0.1);
-
-  chimes.forEach((freq, idx) => {
-    const osc = audioCtx.createOscillator();
-    const chimeGain = audioCtx.createGain();
-    osc.type = 'sawtooth';
-    osc.frequency.setValueAtTime(freq, now);
-    lfoGain.connect(osc.frequency);
-    const filter = audioCtx.createBiquadFilter();
-    filter.type = 'bandpass';
-    filter.frequency.value = freq;
-    filter.Q.value = 3.5;
-    const amp = [0.18, 0.16, 0.14, 0.07][idx];
-    chimeGain.gain.setValueAtTime(0.0001, now);
-    chimeGain.gain.linearRampToValueAtTime(amp, now + 0.07);
-    chimeGain.gain.setValueAtTime(amp, now + 1.05);
-    chimeGain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
-    osc.connect(filter);
-    filter.connect(chimeGain);
-    chimeGain.connect(masterGain);
-    osc.start(now);
-    osc.stop(now + duration + 0.05);
-  });
 }
 
 export function toggleSound() {
@@ -1403,8 +1359,8 @@ export function toggleSound() {
   if (masterGain && audioCtx) {
     masterGain.gain.setValueAtTime(soundMuted ? 0 : 0.85, audioCtx.currentTime);
   }
-  if (!soundMuted && ambientBuffer && !ambientSource) {
-    startAmbientLoop();
+  if (!soundMuted) {
+    startBackgroundMusic();
   }
   if (btn) {
     btn.textContent = soundMuted ? '🔇 Sound: OFF' : '🔊 Sound: ON';
@@ -1551,13 +1507,13 @@ async function init() {
   trainReady = true;
   snapCamera();
 
-  const startAudio = () => {
-    ensureAudioReady();
-    document.removeEventListener('click', startAudio);
-    document.removeEventListener('keydown', startAudio);
+  const onInteraction = (e) => {
+    if (e?.target?.closest?.('#horn-btn')) return;
+    startBackgroundMusic();
   };
-  document.addEventListener('click', startAudio);
-  document.addEventListener('keydown', startAudio);
+  window.addEventListener('pointerdown', onInteraction);
+  window.addEventListener('keydown', onInteraction);
+  window.addEventListener('touchstart', onInteraction);
   try { initAudio(); } catch (e) { /* starts on interaction */ }
 
   await new Promise(r => setTimeout(r, 700));
