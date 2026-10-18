@@ -1,67 +1,82 @@
 <!DOCTYPE html>
 <html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Portfolio — Train Journey</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <canvas id="canvas"></canvas>
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Snowy Land</title>
-    <link rel="stylesheet" href="style.css">
-</head>
-
-<body>
-    <div id="snow-container"></div>
-
-    <header>
-        <div class="cartoon-box" style="display: inline-block; padding: 0.5rem 2rem;">
-            <h3> HY69 <3 </h3>
+    <!-- ─── Loading screen ─────────────────────────────────── -->
+    <div id="loading">
+      <div class="loading-scene">
+        <!-- Animated track -->
+        <div class="track-line">
+          <div class="sleeper"></div><div class="sleeper"></div>
+          <div class="sleeper"></div><div class="sleeper"></div>
+          <div class="sleeper"></div><div class="sleeper"></div>
+          <div class="rail rail-top"></div>
+          <div class="rail rail-bot"></div>
         </div>
-    </header>
+        <!-- Train emoji that chugs across -->
+        <div class="loading-train" id="loadingTrain">🚂</div>
+        <!-- Smoke puffs -->
+        <div class="puff" id="p1"></div>
+        <div class="puff" id="p2"></div>
+        <div class="puff" id="p3"></div>
+      </div>
 
-    <main>
-        <section class="hero">
-            <div class="video-background">
-                <video autoplay muted loop playsinline poster="poster.jpg">
-                    <source src="bg-video-optimized.webm" type="video/webm">
-                    <source src="bg-video-optimized.mp4" type="video/mp4">
-                </video>
-            </div>
-            <h1 class="title">Hellooooo!!<br>I am HY</h1>
+      <div class="loading-info">
+        <h1 class="loading-title">Portfolio</h1>
+        <p class="loading-subtitle">All aboard — loading your journey</p>
 
-            <a href="game.html" class="cartoon-box btn">Start Sliding &rarr;</a>
-        </section>
-
-        <section class="grid-section">
-            <article class="cartoon-box card">
-                <h2 class="card-title">Ice Cream Hills</h2>
-                <p>Did you know the mountains are made of vanilla scoop? Watch out for the sprinkles avalanche!</p>
-            </article>
-            <article class="cartoon-box card" style="background-color: #E0F2F1;">
-                <h2 class="card-title" style="color: #4DB6AC;">Penguin Party</h2>
-                <p>Every Tuesday at 6PM. Formal wear required (Bowties only). Bring your own fish.</p>
-            </article>
-            <article class="cartoon-box card">
-                <h2 class="card-title">Snowball Fight</h2>
-                <p>Championships start soon. Maximum velocity allowed: 50mph. No yellow snow.</p>
-            </article>
-        </section>
-    </main>
-
-    <section id="train-section" class="train-section">
-        <h2 class="train-title">I love trains</h2>
-        <div class="tracks"></div>
-        <div class="bridge"></div>
-        <div class="train-container" id="train-container">
-            <img src="train.png" alt="Pixel Art Train" class="train-image">
+        <div class="loading-bar-wrap">
+          <div class="loading-bar" id="loadingBar"></div>
+          <span class="loading-pct" id="loadingPct">0%</span>
         </div>
-    </section>
 
-    <footer>
-        <p>&copy; 2026 HY. Keep slayingg!</p>
-    </footer>
+        <p class="loading-step" id="loadingStep">Initialising scene…</p>
+      </div>
+    </div>
 
+    <!-- ─── HUD ────────────────────────────────────────────── -->
+    <div id="hud">
+      <div id="time-badge">
+        <span id="time-icon">🌤</span>
+        <span id="time-label">Afternoon</span>
+      </div>
+      <div id="biome-badge">🏔️ Alpine Pass</div>
+      <div id="cam-badge" title="Click or press V to switch camera (5 views)">📷 Side View</div>
+      <button id="horn-btn" class="hud-btn" title="Blow train horn (Press H or Space)">🚂 Pull Horn</button>
+      <button id="sound-btn" class="hud-btn" title="Toggle train audio">🔊 Sound: ON</button>
+    </div>
 
+    <!-- ─── Section panel overlay ──────────────────────────── -->
+    <div id="panel" class="panel hidden">
+      <button id="panel-close" aria-label="Close">✕</button>
+      <div id="panel-inner"></div>
+    </div>
 
-    <script src="script.js"></script>
-</body>
+    <!-- ─── Coach nav bar ───────────────────────────────────── -->
+    <nav id="coach-nav">
+      <button class="coach-btn active" data-coach="0">🚂 Loco</button>
+      <button class="coach-btn" data-coach="1">👤 About</button>
+      <button class="coach-btn" data-coach="2">💻 Skills</button>
+      <button class="coach-btn" data-coach="3">🚀 Projects</button>
+      <button class="coach-btn" data-coach="4">🎯 Interests</button>
+      <button class="coach-btn" data-coach="5">📬 Contact</button>
+    </nav>
 
+    <!-- ─── Hint bar ─────────────────────────────────────────── -->
+    <div id="instructions">
+      Click coach or nav to open &nbsp;|&nbsp;
+      <kbd>V</kbd> camera view &nbsp;|&nbsp;
+      <kbd>H</kbd> / <kbd>Space</kbd> blow horn &nbsp;|&nbsp;
+      Scroll to zoom
+    </div>
+
+    <script type="module" src="src/main.js"></script>
+  </body>
 </html>

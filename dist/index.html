@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Portfolio — Train Journey</title>
+    <script type="module" crossorigin src="/assets/index-B18sQcgm.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-J3LLzmu2.css">
+  </head>
+  <body>
+    <canvas id="canvas"></canvas>
+
+    <!-- ─── Loading screen ─────────────────────────────────── -->
+    <div id="loading">
+      <div class="loading-scene">
+        <!-- Animated track -->
+        <div class="track-line">
+          <div class="sleeper"></div><div class="sleeper"></div>
+          <div class="sleeper"></div><div class="sleeper"></div>
+          <div class="sleeper"></div><div class="sleeper"></div>
+          <div class="rail rail-top"></div>
+          <div class="rail rail-bot"></div>
+        </div>
+        <!-- Train emoji that chugs across -->
+        <div class="loading-train" id="loadingTrain">🚂</div>
+        <!-- Smoke puffs -->
+        <div class="puff" id="p1"></div>
+        <div class="puff" id="p2"></div>
+        <div class="puff" id="p3"></div>
+      </div>
+
+      <div class="loading-info">
+        <h1 class="loading-title">Portfolio</h1>
+        <p class="loading-subtitle">All aboard — loading your journey</p>
+
+        <div class="loading-bar-wrap">
+          <div class="loading-bar" id="loadingBar"></div>
+          <span class="loading-pct" id="loadingPct">0%</span>
+        </div>
+
+        <p class="loading-step" id="loadingStep">Initialising scene…</p>
+      </div>
+    </div>
+
+    <!-- ─── HUD ────────────────────────────────────────────── -->
+    <div id="hud">
+      <div id="time-badge">
+        <span id="time-icon">🌤</span>
+        <span id="time-label">Afternoon</span>
+      </div>
+      <div id="biome-badge">🏔️ Alpine Pass</div>
+      <div id="cam-badge" title="Click or press V to switch camera (5 views)">📷 Side View</div>
+      <button id="horn-btn" class="hud-btn" title="Blow train horn (Press H or Space)">🚂 Pull Horn</button>
+      <button id="sound-btn" class="hud-btn" title="Toggle train audio">🔊 Sound: ON</button>
+    </div>
+
+    <!-- ─── Section panel overlay ──────────────────────────── -->
+    <div id="panel" class="panel hidden">
+      <button id="panel-close" aria-label="Close">✕</button>
+      <div id="panel-inner"></div>
+    </div>
+
+    <!-- ─── Coach nav bar ───────────────────────────────────── -->
+    <nav id="coach-nav">
+      <button class="coach-btn active" data-coach="0">🚂 Loco</button>
+      <button class="coach-btn" data-coach="1">👤 About</button>
+      <button class="coach-btn" data-coach="2">💻 Skills</button>
+      <button class="coach-btn" data-coach="3">🚀 Projects</button>
+      <button class="coach-btn" data-coach="4">🎯 Interests</button>
+      <button class="coach-btn" data-coach="5">📬 Contact</button>
+    </nav>
+
+    <!-- ─── Hint bar ─────────────────────────────────────────── -->
+    <div id="instructions">
+      Click coach or nav to open &nbsp;|&nbsp;
+      <kbd>V</kbd> camera view &nbsp;|&nbsp;
+      <kbd>H</kbd> / <kbd>Space</kbd> blow horn &nbsp;|&nbsp;
+      Scroll to zoom
+    </div>
+
+  </body>
+</html>

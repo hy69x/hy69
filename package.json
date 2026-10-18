@@ -1,25 +1,21 @@
 {
-  "name": "hy69",
+  "name": "portfolio",
   "version": "1.0.0",
-  "description": "",
-  "main": "server.js",
+  "type": "module",
   "scripts": {
-    "start": "node server.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/hy69x/hy69.git"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
-  "bugs": {
-    "url": "https://github.com/hy69x/hy69/issues"
-  },
-  "homepage": "https://github.com/hy69x/hy69#readme",
   "dependencies": {
-    "express": "^5.2.1"
+    "three": "^0.168.0",
+    "gsap": "^3.12.5",
+    "simplex-noise": "^4.0.3"
+  },
+  "devDependencies": {
+    "vite": "^5.4.0"
+  },
+  "allowScripts": {
+    "esbuild@0.21.5": true
   }
 }
