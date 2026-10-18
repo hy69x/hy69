@@ -4,6 +4,7 @@
 
 export class DayCycle {
   constructor() {
+    this._manual = false;
     this.update();
   }
 
@@ -11,11 +12,32 @@ export class DayCycle {
   get t() { return this._t; }
 
   update() {
+    if (this._manual) return this;
     const now  = new Date();
     const h    = now.getHours() + now.getMinutes() / 60;
     this._t    = h / 24;          // 0 = midnight, 0.5 = noon
     this._hour = h;
     return this;
+  }
+
+  setHour(h) {
+    this._manual = true;
+    this._hour = ((h % 24) + 24) % 24;
+    this._t = this._hour / 24;
+    return this;
+  }
+
+  cycleTime() {
+    const presets = [6, 10, 14, 18, 20.5, 23];
+    const curr = this._hour;
+    let next = presets[0];
+    for (const p of presets) {
+      if (p > curr + 0.5) {
+        next = p;
+        break;
+      }
+    }
+    return this.setHour(next);
   }
 
   /** Sky top colour (horizon is lerped from this) */

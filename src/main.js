@@ -752,31 +752,32 @@ const _chimneyWP  = new THREE.Vector3();
 
 // ── 3D VOLUMETRIC CONTINUOUS SMOKE SYSTEM ────────────────────
 class SmokeSystem {
-  constructor(scene, count = 180) {
+  constructor(scene, count = 280) {
     this.count = count;
     // Low-poly faceted dodecahedron gives soft, organic billowing steam cloud puffs
     this.geo = new THREE.DodecahedronGeometry(0.55, 1);
     this.mat = new THREE.MeshLambertMaterial({
       color: 0xedf0f4,
       transparent: true,
-      opacity: 0.68,
+      opacity: 0.72,
       depthWrite: false,
       flatShading: true,
     });
     this.mesh = new THREE.InstancedMesh(this.geo, this.mat, count);
     this.mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    this.mesh.frustumCulled = false; // NEVER cull smoke as train travels along negative Z!
     scene.add(this.mesh);
 
     this.dummy = new THREE.Object3D();
     this.puffs = [];
     this.head = 0;
     this.emitAccumulator = 0;
-    this.emitInterval = 1 / 30; // 30 puffs per second for unbroken continuous steam
-    this.maxAge = count * this.emitInterval; // 6.0 seconds lifetime (~36 units long plume)
+    this.emitInterval = 1 / 35; // 35 puffs per second for dense, unbroken continuous steam
+    this.maxAge = count * this.emitInterval; // 8.0 seconds lifetime (~48 units long plume)
 
     for (let i = 0; i < count; i++) {
       this.puffs.push({
-        x: 0, y: -200, z: 0,
+        x: 0, y: -500, z: 0,
         vx: 0, vy: 0, vz: 0,
         rotX: Math.random() * Math.PI,
         rotY: Math.random() * Math.PI,
@@ -784,9 +785,9 @@ class SmokeSystem {
         rotSpeedX: (Math.random() - 0.5) * 1.5,
         rotSpeedY: (Math.random() - 0.5) * 1.5,
         rotSpeedZ: (Math.random() - 0.5) * 1.5,
-        age: 0,
+        age: 999, // start inactive until spawned or seeded
         maxAge: this.maxAge,
-        scaleMax: 2.3 + Math.random() * 0.8,
+        scaleMax: 2.6 + Math.random() * 0.9,
       });
     }
 
@@ -801,11 +802,12 @@ class SmokeSystem {
       const progress = i / this.count;
       p.age = progress * p.maxAge;
       p.x = chimneyPos.x + Math.sin(progress * 8) * 0.4 * progress;
-      p.y = chimneyPos.y + progress * 3.8;
+      p.y = chimneyPos.y + progress * 4.2;
       p.z = chimneyPos.z + (progress * p.maxAge * SPEED) + (Math.random() - 0.5) * 0.2;
-      p.vx = (Math.random() - 0.5) * 0.3;
-      p.vy = 1.0 + Math.random() * 0.5;
-      p.vz = 0.4 + Math.random() * 0.3;
+      p.vx = (Math.random() - 0.5) * 0.35;
+      p.vy = 1.2 + Math.random() * 0.6;
+      p.vz = 0.5 + Math.random() * 0.4;
+      p.scaleMax = 2.6 + Math.random() * 0.9;
     }
     this.head = 0;
     this.updateMatrix();
@@ -814,15 +816,17 @@ class SmokeSystem {
   update(dt, chimneyPos) {
     if (!this.lastChimneyPos) this.lastChimneyPos = chimneyPos.clone();
 
+    // Prevent accumulator explosion from frame skips or tab switches
+    this.emitAccumulator = Math.min(this.emitAccumulator + dt, 0.08);
+
     // Continuous steady emission: emit puffs at strict cadence with sub-frame interpolation
-    this.emitAccumulator += dt;
     while (this.emitAccumulator >= this.emitInterval) {
       this.emitAccumulator -= this.emitInterval;
 
       const alpha = THREE.MathUtils.clamp(1.0 - (this.emitAccumulator / Math.max(dt, 0.001)), 0, 1);
-      const spawnX = THREE.MathUtils.lerp(this.lastChimneyPos.x, chimneyPos.x, alpha) + (Math.random() - 0.5) * 0.1;
+      const spawnX = THREE.MathUtils.lerp(this.lastChimneyPos.x, chimneyPos.x, alpha) + (Math.random() - 0.5) * 0.12;
       const spawnY = THREE.MathUtils.lerp(this.lastChimneyPos.y, chimneyPos.y, alpha) + 0.15;
-      const spawnZ = THREE.MathUtils.lerp(this.lastChimneyPos.z, chimneyPos.z, alpha) + (Math.random() - 0.5) * 0.1;
+      const spawnZ = THREE.MathUtils.lerp(this.lastChimneyPos.z, chimneyPos.z, alpha) + (Math.random() - 0.5) * 0.12;
 
       const p = this.puffs[this.head];
       this.head = (this.head + 1) % this.count;
@@ -832,9 +836,9 @@ class SmokeSystem {
       p.y = spawnY;
       p.z = spawnZ;
       p.vx = (Math.random() - 0.5) * 0.35;
-      p.vy = 1.8 + Math.random() * 1.0; // initial vertical steam ejection
-      p.vz = 0.4 + Math.random() * 0.4; // aerodynamic drift trailing behind
-      p.scaleMax = 2.4 + Math.random() * 0.8;
+      p.vy = 2.0 + Math.random() * 1.0; // initial vertical steam ejection
+      p.vz = 0.5 + Math.random() * 0.4; // aerodynamic drift trailing behind
+      p.scaleMax = 2.6 + Math.random() * 0.9;
     }
 
     this.lastChimneyPos.copy(chimneyPos);
@@ -842,6 +846,15 @@ class SmokeSystem {
     // Update all puffs along the billowing plume
     for (let i = 0; i < this.count; i++) {
       const p = this.puffs[i];
+      if (p.age >= p.maxAge) {
+        // Place expired puff off-screen with tiny scale so it never pops
+        this.dummy.position.set(0, -500, 0);
+        this.dummy.scale.setScalar(0.0001);
+        this.dummy.updateMatrix();
+        this.mesh.setMatrixAt(i, this.dummy.matrix);
+        continue;
+      }
+
       p.age += dt;
       const progress = Math.min(1, p.age / p.maxAge);
 
@@ -854,14 +867,14 @@ class SmokeSystem {
       p.rotY += p.rotSpeedY * dt;
       p.rotZ += p.rotSpeedZ * dt;
 
-      // Unbroken billowing scale curve: compact birth -> rapid puff -> large cloud -> smooth evaporate
+      // Dense unbroken billowing scale curve: compact birth -> rapid expansion -> stays large -> smooth vanish
       let s;
-      if (progress < 0.18) {
-        s = THREE.MathUtils.lerp(0.42, 1.4, progress / 0.18);
-      } else if (progress < 0.60) {
-        s = THREE.MathUtils.lerp(1.4, p.scaleMax, (progress - 0.18) / 0.42);
+      if (progress < 0.12) {
+        s = THREE.MathUtils.lerp(0.45, 1.6, progress / 0.12);
+      } else if (progress < 0.70) {
+        s = THREE.MathUtils.lerp(1.6, p.scaleMax, (progress - 0.12) / 0.58);
       } else {
-        s = THREE.MathUtils.lerp(p.scaleMax, 0.001, (progress - 0.60) / 0.40);
+        s = THREE.MathUtils.lerp(p.scaleMax, 0.05, (progress - 0.70) / 0.30);
       }
 
       this.dummy.position.set(p.x, p.y, p.z);
@@ -878,17 +891,17 @@ class SmokeSystem {
   // Dramatic burst of high-velocity steam when locomotive horn/whistle is pulled
   burstWhistle(pos) {
     if (!pos) return;
-    for (let k = 0; k < 10; k++) {
+    for (let k = 0; k < 12; k++) {
       const p = this.puffs[this.head];
       this.head = (this.head + 1) % this.count;
       p.age = 0;
       p.x = pos.x + (Math.random() - 0.5) * 0.25;
-      p.y = pos.y + 0.15 + k * 0.08;
+      p.y = pos.y + 0.2 + k * 0.12;
       p.z = pos.z + (Math.random() - 0.5) * 0.25;
       p.vx = (Math.random() - 0.5) * 0.5;
-      p.vy = 4.2 + Math.random() * 2.2; // fast-rising vertical jet
-      p.vz = 0.6 + Math.random() * 0.6;
-      p.scaleMax = 2.8 + Math.random() * 0.8;
+      p.vy = 4.8 + Math.random() * 2.5; // energetic vertical steam burst
+      p.vz = 0.8 + Math.random() * 0.6;
+      p.scaleMax = 3.2 + Math.random() * 0.8;
     }
     this.updateMatrix();
   }
@@ -896,11 +909,12 @@ class SmokeSystem {
   updateMatrix() {
     for (let i = 0; i < this.count; i++) {
       const p = this.puffs[i];
+      if (p.age >= p.maxAge) continue;
       const progress = Math.min(1, p.age / p.maxAge);
       let s;
-      if (progress < 0.18) s = THREE.MathUtils.lerp(0.42, 1.4, progress / 0.18);
-      else if (progress < 0.60) s = THREE.MathUtils.lerp(1.4, p.scaleMax, (progress - 0.18) / 0.42);
-      else s = THREE.MathUtils.lerp(p.scaleMax, 0.001, (progress - 0.60) / 0.40);
+      if (progress < 0.12) s = THREE.MathUtils.lerp(0.45, 1.6, progress / 0.12);
+      else if (progress < 0.70) s = THREE.MathUtils.lerp(1.6, p.scaleMax, (progress - 0.12) / 0.58);
+      else s = THREE.MathUtils.lerp(p.scaleMax, 0.05, (progress - 0.70) / 0.30);
 
       this.dummy.position.set(p.x, p.y, p.z);
       this.dummy.rotation.set(p.rotX, p.rotY, p.rotZ);
@@ -912,7 +926,7 @@ class SmokeSystem {
   }
 }
 
-const smokeSystem = new SmokeSystem(scene, 180);
+const smokeSystem = new SmokeSystem(scene, 280);
 
 // ── 3D FALLING SNOW PARTICLES (Active during Frozen Tundra Biome) ──
 class SnowSystem {
@@ -961,6 +975,7 @@ class SnowSystem {
     });
 
     this.points = new THREE.Points(geo, this.mat);
+    this.points.frustumCulled = false;
     scene.add(this.points);
     this.points.visible = false;
   }
@@ -1002,6 +1017,149 @@ class SnowSystem {
 }
 
 const snowSystem = new SnowSystem(scene, 1200);
+
+// ── LOCOMOTIVE HEADLIGHT SYSTEM ──────────────────────────────
+let headlightGroup     = null;
+let headSpot           = null;
+let frontFillLight     = null;
+let beamCone           = null;
+let glowSprite         = null;
+let lensMat            = null;
+let headlightIntensity = 0.0;
+
+function createLocomotiveHeadlight() {
+  const group = new THREE.Group();
+
+  // 1. Vintage Cast Iron / Dark Metallic Lantern Casing
+  const casingGeo = new THREE.CylinderGeometry(0.14, 0.16, 0.22, 16);
+  casingGeo.rotateX(Math.PI / 2); // Cylinder axis points along +Z
+  const casingMat = new THREE.MeshStandardMaterial({
+    color: 0x181818,
+    metalness: 0.85,
+    roughness: 0.35,
+  });
+  const casing = new THREE.Mesh(casingGeo, casingMat);
+  group.add(casing);
+
+  // 2. Polished Vintage Brass Trim Bezel
+  const rimGeo = new THREE.TorusGeometry(0.14, 0.02, 8, 24);
+  const rimMat = new THREE.MeshStandardMaterial({
+    color: 0xdfb438,
+    metalness: 0.9,
+    roughness: 0.2,
+  });
+  const rim = new THREE.Mesh(rimGeo, rimMat);
+  rim.position.set(0, 0, 0.11);
+  group.add(rim);
+
+  // 3. Glowing Lamp Lens Disk
+  const lensGeo = new THREE.CircleGeometry(0.13, 24);
+  lensMat = new THREE.MeshBasicMaterial({
+    color: 0xfffae0,
+    toneMapped: false,
+  });
+  const lens = new THREE.Mesh(lensGeo, lensMat);
+  lens.position.set(0, 0, 0.115);
+  group.add(lens);
+
+  // 4. Soft Lens Glow Flare Sprite
+  const cvs = document.createElement('canvas');
+  cvs.width = cvs.height = 128;
+  const ctx = cvs.getContext('2d');
+  const grad = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
+  grad.addColorStop(0, 'rgba(255, 255, 230, 1.0)');
+  grad.addColorStop(0.25, 'rgba(255, 235, 160, 0.7)');
+  grad.addColorStop(0.6, 'rgba(255, 195, 80, 0.2)');
+  grad.addColorStop(1, 'rgba(255, 195, 80, 0)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 128, 128);
+  const glowTex = new THREE.CanvasTexture(cvs);
+
+  const glowMat = new THREE.SpriteMaterial({
+    map: glowTex,
+    color: 0xfff0c0,
+    transparent: true,
+    opacity: 0,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+  });
+  glowSprite = new THREE.Sprite(glowMat);
+  glowSprite.scale.set(1.5, 1.5, 1.5);
+  glowSprite.position.set(0, 0, 0.16);
+  group.add(glowSprite);
+
+  // 5. Cinematic Volumetric Light Cone
+  const coneGeo = new THREE.ConeGeometry(2.2, 16.0, 24, 1, true);
+  coneGeo.rotateX(-Math.PI / 2);
+  coneGeo.translate(0, 0, 8.0); // Stretches forward along +Z from lamp face
+  const coneMat = new THREE.MeshBasicMaterial({
+    color: 0xfff2d4,
+    transparent: true,
+    opacity: 0,
+    blending: THREE.AdditiveBlending,
+    side: THREE.DoubleSide,
+    depthWrite: false,
+  });
+  beamCone = new THREE.Mesh(coneGeo, coneMat);
+  beamCone.frustumCulled = false;
+  group.add(beamCone);
+
+  // 6. Dynamic 3D SpotLight pointing along rails ahead
+  headSpot = new THREE.SpotLight(0xfffae6, 0, 75, Math.PI / 5.2, 0.45, 1.0);
+  headSpot.position.set(0, 0, 0.15);
+  headSpot.castShadow = true;
+  headSpot.shadow.mapSize.width = 1024;
+  headSpot.shadow.mapSize.height = 1024;
+  headSpot.shadow.camera.near = 1;
+  headSpot.shadow.camera.far = 75;
+  headSpot.shadow.bias = -0.0005;
+
+  const spotTarget = new THREE.Object3D();
+  spotTarget.position.set(0, -0.25, 20.0);
+  group.add(spotTarget);
+  headSpot.target = spotTarget;
+  group.add(headSpot);
+
+  // 7. Front Fill PointLight for cowcatcher & front track ties
+  frontFillLight = new THREE.PointLight(0xffe6ad, 0, 12, 1.4);
+  frontFillLight.position.set(0, 0, 0.4);
+  group.add(frontFillLight);
+
+  return group;
+}
+
+function updateHeadlights(dt) {
+  if (!headlightGroup || !headSpot) return;
+  const isNight = dayCycle.isNight();
+  const h = dayCycle._hour;
+
+  let targetLevel = 0.0;
+  if (isNight) {
+    targetLevel = 1.0;
+  } else if (h >= 19.5 || h < 6.5) {
+    targetLevel = 0.75; // dusk / dawn twilight
+  } else if (h >= 17.5 || h < 8.0) {
+    targetLevel = 0.35; // golden hour / morning
+  } else {
+    targetLevel = 0.02; // daytime running lamp
+  }
+
+  headlightIntensity = THREE.MathUtils.lerp(headlightIntensity, targetLevel, Math.min(1, dt * 3.5));
+
+  headSpot.intensity = headlightIntensity * 4.8;
+  frontFillLight.intensity = headlightIntensity * 1.6;
+  beamCone.material.opacity = headlightIntensity * 0.22;
+  beamCone.visible = headlightIntensity > 0.01;
+  glowSprite.material.opacity = headlightIntensity * 0.95;
+  glowSprite.visible = headlightIntensity > 0.01;
+  if (lensMat) {
+    lensMat.color.setRGB(
+      0.25 + headlightIntensity * 0.75,
+      0.25 + headlightIntensity * 0.73,
+      0.22 + headlightIntensity * 0.65
+    );
+  }
+}
 
 // ── TRAIN ASSEMBLY ────────────────────────────────────────────
 function assembleTrain(locoGltf, coachAGltf, coachBGltf) {
@@ -1049,6 +1207,11 @@ function assembleTrain(locoGltf, coachAGltf, coachBGltf) {
   trainGroup.updateMatrixWorld(true);
   chimneyAnchor.getWorldPosition(_chimneyWP);
   smokeSystem.seedPlume(_chimneyWP);
+
+  // ── Locomotive Headlight (Front Night Illumination) ──
+  headlightGroup = createLocomotiveHeadlight();
+  headlightGroup.position.set(0, 0.96, 1.31);
+  loco.add(headlightGroup);
 
   // ── 2. Five Coaches ──
   const tpls  = [coachAGltf, coachBGltf, coachAGltf, coachBGltf, coachAGltf];
@@ -1124,8 +1287,14 @@ function applyDayCycle() {
   const lbl = dayCycle.getLabel();
   document.getElementById('time-icon').textContent  = lbl.icon;
   document.getElementById('time-label').textContent = lbl.label;
+  updateHeadlights(1.0);
 }
 setInterval(applyDayCycle, 60_000);
+
+export function toggleTime() {
+  dayCycle.cycleTime();
+  applyDayCycle();
+}
 
 // ── CAMERA MODES & TRACKING ──────────────────────────────────
 export const CAMERA_MODES = [
@@ -1320,6 +1489,9 @@ renderer.setAnimationLoop(() => {
       smokeSystem.update(dt, _chimneyWP);
     }
 
+    // Dynamic locomotive headlight illumination
+    updateHeadlights(dt);
+
     // Continuous track tiles with ballast bed
     recycleTracks(trainGroup.position.z);
 
@@ -1344,7 +1516,7 @@ renderer.setAnimationLoop(() => {
   // ── DYNAMIC 4-BIOME ATMOSPHERE & MATERIAL ADAPTATION ─────────
   const targetBiome = sampleBlendedBiome(tz);
   const blendRate = Math.min(1, dt * 2.8);
-  const nightFactor = dayCycle.isNight() ? 0.32 : 1.0;
+  const nightFactor = dayCycle.isNight() ? 0.32 : (dayCycle._hour < 6.5 || dayCycle._hour >= 20.0 ? 0.65 : 1.0);
 
   _tempColor.copy(targetBiome.groundColor).multiplyScalar(nightFactor);
   groundMat.color.lerp(_tempColor, blendRate);
@@ -1364,15 +1536,23 @@ renderer.setAnimationLoop(() => {
   _tempColor.copy(targetBiome.leafDark).multiplyScalar(nightFactor);
   matLeafDark.color.lerp(_tempColor, blendRate);
 
+  const top = dayCycle.getSkyTop();
+  const bot = dayCycle.getSkyBottom();
+  const isDay = dayCycle._hour >= 9 && dayCycle._hour < 17;
   if (dayCycle.isNight()) {
-    const bot = dayCycle.getSkyBottom(), top = dayCycle.getSkyTop();
     _fc.setRGB(bot.r, bot.g, bot.b);
     scene.fog.color.lerp(_fc, blendRate);
     _sc.setRGB(top.r, top.g, top.b);
     skyMat.color.lerp(_sc, blendRate);
-  } else {
+  } else if (isDay) {
     scene.fog.color.lerp(targetBiome.fogColor, blendRate);
     skyMat.color.lerp(targetBiome.skyColor, blendRate);
+  } else {
+    // Dawn / Golden hour / Dusk: blend atmospheric twilight with biome sky
+    _fc.setRGB(bot.r, bot.g, bot.b).lerp(targetBiome.fogColor, 0.4);
+    scene.fog.color.lerp(_fc, blendRate);
+    _sc.setRGB(top.r, top.g, top.b).lerp(targetBiome.skyColor, 0.35);
+    skyMat.color.lerp(_sc, blendRate);
   }
   scene.background.copy(skyMat.color);
 
@@ -1389,7 +1569,7 @@ renderer.setAnimationLoop(() => {
   }
 
   updateCamera(dt);
-  stars.update(dt);
+  stars.update(dt, camera.position);
   renderer.render(scene, camera);
 });
 
@@ -1452,11 +1632,13 @@ coachBtns.forEach(btn => btn.addEventListener('click', () => {
 document.getElementById('panel-close').addEventListener('click', () => {
   UI.hide(); highlightCoach(-1); coachBtns.forEach(b => b.classList.remove('active'));
 });
+document.getElementById('time-badge')?.addEventListener('click', toggleTime);
 document.getElementById('cam-badge').addEventListener('click', toggleCam);
 document.getElementById('horn-btn')?.addEventListener('click', playHorn);
 document.getElementById('sound-btn')?.addEventListener('click', toggleSound);
 
 window.addEventListener('keydown', e => {
+  if (e.key === 't' || e.key === 'T') toggleTime();
   if (e.key === 'v' || e.key === 'V') toggleCam();
   if (e.key === 'h' || e.key === 'H' || (e.code === 'Space' && !e.repeat && !document.getElementById('panel').classList.contains('visible'))) {
     if (e.code === 'Space') e.preventDefault();

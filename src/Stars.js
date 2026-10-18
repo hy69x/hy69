@@ -22,6 +22,7 @@ export class Stars {
       transparent: true, opacity: 0, depthWrite: false,
     });
     this.points  = new THREE.Points(geo, mat);
+    this.points.frustumCulled = false;
     this._mat    = mat;
     this._night  = false;
     scene.add(this.points);
@@ -31,7 +32,8 @@ export class Stars {
     this._night = night;
   }
 
-  update(dt) {
+  update(dt, cameraPos) {
+    if (cameraPos) this.points.position.copy(cameraPos);
     const target = this._night ? 0.85 : 0;
     this._mat.opacity += (target - this._mat.opacity) * dt * 1.5;
   }
